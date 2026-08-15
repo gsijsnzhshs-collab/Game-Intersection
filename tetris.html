@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>俄罗斯方块 · 霓虹游戏厅</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; padding: 24px 15px 34px; color: #f9f2ff;
+      font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif; user-select: none;
+      background: radial-gradient(circle at 8% 7%, #52246f 0, transparent 28rem), linear-gradient(145deg, #130d28, #1b1238 55%, #0b172e);
+    }
+    .app { width: min(100%, 790px); margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 16px; color: #e2c8f4; text-decoration: none; font-size: .92rem; }
+    .back:hover, .back:focus-visible { color: #f7a7ff; outline: none; }
+    header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    h1 { margin: 0; font-size: clamp(1.75rem, 5vw, 2.5rem); letter-spacing: .1em; text-shadow: 0 0 19px rgba(245, 161, 255, .52); }
+    .subtitle { margin: 7px 0 0; color: #ccb9e1; font-size: .92rem; }
+    button {
+      border: 1px solid transparent; border-radius: 10px; padding: 9px 13px; color: #26132d; background: #f0a2f5;
+      font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; transition: transform .15s, filter .15s, border-color .15s;
+    }
+    button:hover, button:focus-visible { transform: translateY(-1px); filter: brightness(1.08); border-color: #fff; outline: none; }
+    .game-layout { display: flex; justify-content: center; align-items: flex-start; gap: 18px; }
+    .board-frame {
+      position: relative; flex: 0 1 600px; overflow: hidden; border: 3px solid #c461df; border-radius: 13px;
+      background: #10142e; box-shadow: 0 0 32px rgba(211, 93, 235, .34);
+    }
+    #board { display: block; width: 100%; height: auto; background: #10142e; }
+    .side { width: 165px; display: grid; gap: 11px; }
+    .side-card { padding: 12px; border: 1px solid #604776; border-radius: 12px; background: rgba(34, 21, 65, .84); }
+    .side-card h2 { margin: 0 0 8px; color: #cdb9e6; font-size: .76rem; letter-spacing: .12em; }
+    #next { display: block; width: 100%; aspect-ratio: 1; border-radius: 8px; background: #131832; }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat { padding: 8px 4px; border-radius: 8px; text-align: center; background: rgba(255, 255, 255, .05); color: #bca9d3; font-size: .7rem; }
+    .stat strong { display: block; margin-top: 3px; color: #fff1ff; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+    #message { min-height: 1.4em; margin: 0; color: #dac8ed; font-size: .87rem; line-height: 1.5; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions button { padding: 9px 5px; }
+    #restart { background: #f0a2f5; }
+    #pause { color: #e9def8; background: #413360; }
+    .keyboard { margin: 17px 0 0; text-align: center; color: #c5b6d8; font-size: .88rem; line-height: 1.9; }
+    kbd { padding: 2px 6px; border: 1px solid #766388; border-bottom-width: 2px; border-radius: 5px; background: #31254a; color: #fff5ff; font-family: inherit; font-size: .8rem; }
+    .touch-controls { display: none; grid-template-columns: repeat(3, 56px); justify-content: center; gap: 7px; margin-top: 15px; }
+    .touch-controls button { width: 56px; height: 45px; padding: 0; font-size: 1.25rem; }
+    .touch-controls .rotate { grid-column: 2; }
+    .touch-controls .left { grid-column: 1; grid-row: 2; }
+    .touch-controls .down { grid-column: 2; grid-row: 2; }
+    .touch-controls .right { grid-column: 3; grid-row: 2; }
+    .touch-controls .drop { grid-column: 2; grid-row: 3; font-size: 1rem; }
+    #overlay { position: absolute; inset: 0; display: none; place-items: center; padding: 20px; background: rgba(10, 6, 24, .72); text-align: center; }
+    #overlay.show { display: grid; }
+    #overlay h2 { margin: 0 0 8px; font-size: 1.55rem; }
+    #overlay p { margin: 0; color: #e5d5f2; line-height: 1.6; }
+    @media (max-width: 560px) {
+      body { padding: 18px 11px 27px; }
+      header { align-items: flex-start; }
+      .game-layout { gap: 10px; }
+      .board-frame { flex-basis: min(62vw, 600px); }
+      .side { width: min(31vw, 142px); gap: 8px; }
+      .side-card { padding: 9px; }
+      .keyboard { display: none; }
+      .touch-controls { display: grid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <a class="back" href="index.html">← 返回游戏合集</a>
+    <header>
+      <div><h1>🧱 俄罗斯方块</h1><p class="subtitle">消除整行，别让方块堆到顶端。</p></div>
+      <button id="restart" type="button">重新开始</button>
+    </header>
+    <section class="game-layout" aria-label="俄罗斯方块游戏区域">
+      <div class="board-frame">
+        <canvas id="board" width="600" height="720" aria-label="俄罗斯方块棋盘"></canvas>
+        <div id="overlay" role="status"><div><h2>游戏结束</h2><p id="overText"></p></div></div>
+      </div>
+      <aside class="side" aria-label="游戏信息">
+        <section class="side-card"><h2>下一个</h2><canvas id="next" width="120" height="120" aria-label="下一个方块"></canvas></section>
+        <section class="side-card stats">
+          <div class="stat">得分<strong id="score">0</strong></div>
+          <div class="stat">最高<strong id="best">0</strong></div>
+          <div class="stat">消行<strong id="lines">0</strong></div>
+          <div class="stat">等级<strong id="level">1</strong></div>
+        </section>
+        <section class="side-card"><p id="message">方向键移动，空格速降。</p></section>
+        <div class="actions"><button id="pause" type="button">暂停</button><button id="rotate" type="button">旋转 ↻</button></div>
+      </aside>
+    </section>
+    <p class="keyboard"><kbd>←</kbd> <kbd>→</kbd> 移动　<kbd>↑</kbd> 旋转　<kbd>↓</kbd> 下落　<kbd>空格</kbd> 速降　<kbd>P</kbd> 暂停</p>
+    <div class="touch-controls" aria-label="触屏操作">
+      <button class="rotate" data-action="rotate" type="button" aria-label="旋转">↻</button>
+      <button class="left" data-action="left" type="button" aria-label="向左">◀</button>
+      <button class="down" data-action="down" type="button" aria-label="向下">▼</button>
+      <button class="right" data-action="right" type="button" aria-label="向右">▶</button>
+      <button class="drop" data-action="drop" type="button" aria-label="速降">DROP</button>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const COLS = 20, ROWS = 24, SIZE = 30;
+      const PIECES = {
+        I: { color: '#63e8f4', matrix: [[1,1,1,1]] },
+        O: { color: '#ffd766', matrix: [[1,1],[1,1]] },
+        T: { color: '#d38bff', matrix: [[0,1,0],[1,1,1]] },
+        S: { color: '#72e6a3', matrix: [[0,1,1],[1,1,0]] },
+        Z: { color: '#ff778e', matrix: [[1,1,0],[0,1,1]] },
+        J: { color: '#778aff', matrix: [[1,0,0],[1,1,1]] },
+        L: { color: '#ffae70', matrix: [[0,0,1],[1,1,1]] }
+      };
+      const boardCanvas = document.querySelector('#board'), boardCtx = boardCanvas.getContext('2d');
+      const nextCanvas = document.querySelector('#next'), nextCtx = nextCanvas.getContext('2d');
+      const scoreEl = document.querySelector('#score'), bestEl = document.querySelector('#best'), linesEl = document.querySelector('#lines'), levelEl = document.querySelector('#level');
+      const messageEl = document.querySelector('#message'), pauseEl = document.querySelector('#pause'), overlayEl = document.querySelector('#overlay'), overTextEl = document.querySelector('#overText');
+      const BEST_KEY = 'neon_arcade_tetris_best';
+      let board, current, next, bag, score, best, lines, level, paused, ended, timer;
+      best = Number(localStorage.getItem(BEST_KEY)) || 0; bestEl.textContent = best;
+
+      function emptyBoard() { return Array.from({ length: ROWS }, () => Array(COLS).fill(null)); }
+      function shuffle(items) {
+        for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const saved = items[i]; items[i] = items[j]; items[j] = saved; }
+        return items;
+      }
+      function getPiece() {
+        if (!bag.length) bag = shuffle(Object.keys(PIECES));
+        const definition = PIECES[bag.pop()];
+        return { matrix: definition.matrix.map(row => row.slice()), color: definition.color, x: Math.floor((COLS - definition.matrix[0].length) / 2), y: 0 };
+      }
+      function reset() {
+        clearInterval(timer); board = emptyBoard(); bag = []; score = 0; lines = 0; level = 1; paused = false; ended = false;
+        current = getPiece(); next = getPiece(); overlayEl.classList.remove('show'); pauseEl.textContent = '暂停';
+        messageEl.textContent = '方向键移动，空格速降。'; updateInfo(); restartTimer(); draw();
+      }
+      function restartTimer() {
+        clearInterval(timer);
+        timer = setInterval(stepDown, Math.max(105, 800 - (level - 1) * 65));
+      }
+      function collision(piece, dx, dy, matrix) {
+        const shape = matrix || piece.matrix;
+        for (let y = 0; y < shape.length; y++) for (let x = 0; x < shape[y].length; x++) {
+          if (!shape[y][x]) continue;
+          const targetX = piece.x + x + dx, targetY = piece.y + y + dy;
+          if (targetX < 0 || targetX >= COLS || targetY >= ROWS || (targetY >= 0 && board[targetY][targetX])) return true;
+        }
+        return false;
+      }
+      function move(dx) {
+        if (!active() || collision(current, dx, 0)) return false;
+        current.x += dx; draw(); return true;
+      }
+      function stepDown() {
+        if (!active()) return;
+        if (!collision(current, 0, 1)) { current.y++; draw(); }
+        else lockPiece();
+      }
+      function rotate() {
+        if (!active()) return;
+        const rotated = current.matrix[0].map((_, index) => current.matrix.map(row => row[index]).reverse());
+        for (const kick of [0, -1, 1, -2, 2]) {
+          if (!collision(current, kick, 0, rotated)) { current.matrix = rotated; current.x += kick; draw(); return; }
+        }
+      }
+      function hardDrop() {
+        if (!active()) return;
+        let distance = 0;
+        while (!collision(current, 0, 1)) { current.y++; distance++; }
+        score += distance * 2; lockPiece();
+      }
+      function lockPiece() {
+        current.matrix.forEach((row, y) => row.forEach((filled, x) => {
+          if (filled && current.y + y >= 0) board[current.y + y][current.x + x] = current.color;
+        }));
+        let cleared = 0;
+        for (let y = ROWS - 1; y >= 0; y--) {
+          if (board[y].every(Boolean)) { board.splice(y, 1); board.unshift(Array(COLS).fill(null)); cleared++; y++; }
+        }
+        if (cleared) {
+          const values = [0, 100, 300, 500, 800];
+          score += values[cleared] * level; lines += cleared;
+          const newLevel = Math.floor(lines / 10) + 1;
+          if (newLevel !== level) { level = newLevel; restartTimer(); }
+          messageEl.textContent = cleared === 4 ? '✨ 四连消！太漂亮了。' : '消除了 ' + cleared + ' 行！';
+        }
+        current = next; next = getPiece();
+        if (collision(current, 0, 0)) gameOver();
+        updateInfo(); draw();
+      }
+      function gameOver() {
+        ended = true; clearInterval(timer);
+        if (score > best) { best = score; localStorage.setItem(BEST_KEY, String(best)); }
+        bestEl.textContent = best; overTextEl.textContent = '本次得分：' + score + '　最高分：' + best;
+        overlayEl.classList.add('show'); messageEl.textContent = '方块堆到顶端了，点击“重新开始”再来一局。';
+      }
+      function updateInfo() {
+        scoreEl.textContent = score; bestEl.textContent = best; linesEl.textContent = lines; levelEl.textContent = level;
+      }
+      function active() { return !paused && !ended; }
+      function drawBlock(ctx, x, y, size, color) {
+        ctx.fillStyle = color; ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
+        ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x + 3, y + 3, size - 6, 3);
+        ctx.fillStyle = 'rgba(0,0,0,.20)'; ctx.fillRect(x + 3, y + size - 6, size - 6, 3);
+      }
+      function draw() {
+        boardCtx.fillStyle = '#10142e'; boardCtx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
+        boardCtx.strokeStyle = 'rgba(199,178,255,.075)'; boardCtx.lineWidth = 1;
+        for (let x = 1; x < COLS; x++) { boardCtx.beginPath(); boardCtx.moveTo(x * SIZE, 0); boardCtx.lineTo(x * SIZE, ROWS * SIZE); boardCtx.stroke(); }
+        for (let y = 1; y < ROWS; y++) { boardCtx.beginPath(); boardCtx.moveTo(0, y * SIZE); boardCtx.lineTo(COLS * SIZE, y * SIZE); boardCtx.stroke(); }
+        board.forEach((row, y) => row.forEach((color, x) => { if (color) drawBlock(boardCtx, x * SIZE, y * SIZE, SIZE, color); }));
+        if (current) current.matrix.forEach((row, y) => row.forEach((filled, x) => { if (filled) drawBlock(boardCtx, (current.x + x) * SIZE, (current.y + y) * SIZE, SIZE, current.color); }));
+        nextCtx.fillStyle = '#131832'; nextCtx.fillRect(0, 0, 120, 120);
+        const previewSize = 25, width = next.matrix[0].length * previewSize, height = next.matrix.length * previewSize, left = (120 - width) / 2, top = (120 - height) / 2;
+        next.matrix.forEach((row, y) => row.forEach((filled, x) => { if (filled) drawBlock(nextCtx, left + x * previewSize, top + y * previewSize, previewSize, next.color); }));
+      }
+      function togglePause() {
+        if (ended) return;
+        paused = !paused; pauseEl.textContent = paused ? '继续' : '暂停';
+        messageEl.textContent = paused ? '游戏已暂停。' : '继续挑战！';
+      }
+      function action(name) {
+        if (name === 'left') move(-1);
+        if (name === 'right') move(1);
+        if (name === 'down') stepDown();
+        if (name === 'rotate') rotate();
+        if (name === 'drop') hardDrop();
+      }
+      document.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
+        if (['arrowleft','arrowright','arrowdown','arrowup',' ','p'].includes(key)) event.preventDefault();
+        const keys = { arrowleft: 'left', arrowright: 'right', arrowdown: 'down', arrowup: 'rotate', ' ': 'drop' };
+        if (keys[key]) action(keys[key]);
+        if (key === 'p') togglePause();
+      });
+      document.querySelector('#restart').addEventListener('click', reset);
+      pauseEl.addEventListener('click', togglePause);
+      document.querySelector('#rotate').addEventListener('click', rotate);
+      document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => action(button.dataset.action)));
+      reset();
+    })();
+  </script>
+</body>
+</html>

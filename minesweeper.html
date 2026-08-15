@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>扫雷 · 霓虹游戏厅</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; padding: 24px 14px 36px; color: #eef5ff;
+      font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at 12% 5%, #273e86 0, transparent 30rem), linear-gradient(145deg, #080e20, #121536 54%, #17102d);
+      user-select: none;
+    }
+    .app { width: min(100%, 980px); margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 18px; color: #b7cbe9; text-decoration: none; font-size: .92rem; }
+    .back:hover, .back:focus-visible { color: #8bc8ff; outline: none; }
+    .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    h1 { margin: 0; font-size: clamp(1.75rem, 5vw, 2.5rem); letter-spacing: .12em; text-shadow: 0 0 17px rgba(118, 171, 255, .48); }
+    .subtitle { margin: 7px 0 0; color: #aabbdc; font-size: .94rem; }
+    .difficulty { display: flex; gap: 7px; flex-wrap: wrap; }
+    button {
+      border: 1px solid transparent; border-radius: 10px; padding: 9px 13px; background: #202b51; color: #dce9ff;
+      font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; transition: transform .15s, background .15s, border-color .15s;
+    }
+    button:hover, button:focus-visible { transform: translateY(-1px); border-color: #89b8ff; outline: none; }
+    button.active { color: #091427; background: #8bc8ff; }
+    .panel {
+      display: flex; align-items: center; justify-content: center; gap: 11px; padding: 10px; margin-bottom: 14px;
+      border: 1px solid #35456f; border-radius: 14px; background: rgba(18, 29, 61, .86); box-shadow: 0 12px 35px rgba(0, 0, 0, .22);
+    }
+    .stat { min-width: 101px; padding: 5px 8px; text-align: center; color: #aabbd9; font-size: .78rem; }
+    .stat strong { display: block; color: #eff7ff; font-size: 1.35rem; line-height: 1.35; font-variant-numeric: tabular-nums; }
+    #face { width: 48px; height: 44px; padding: 0; border-color: #51679c; background: #243766; font-size: 1.45rem; }
+    #face:hover { background: #334c88; }
+    .modebar { display: flex; justify-content: center; gap: 7px; margin: 0 0 12px; }
+    .modebar button { min-width: 105px; padding: 8px 12px; color: #c7d6ef; background: rgba(37, 48, 87, .72); }
+    .modebar button.active { color: #07101f; background: #6de5bc; }
+    .board-wrap { overflow-x: auto; padding: 4px 2px 13px; }
+    #board {
+      --cols: 9; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      width: min(94vw, calc(var(--cols) * 29px)); margin: 0 auto;
+      border: 3px solid #4664a3; border-radius: 8px; overflow: hidden; background: #172550;
+      box-shadow: 0 0 30px rgba(105, 147, 255, .28);
+    }
+    .cell {
+      aspect-ratio: 1; min-width: 0; display: grid; place-items: center; padding: 0;
+      border: 1px solid #405583; border-radius: 0; color: #edf4ff; background: linear-gradient(145deg, #334a80, #263b6b);
+      font-family: ui-monospace, "Cascadia Mono", monospace; font-size: clamp(.62rem, 2.3vw, 1rem); line-height: 1; font-weight: 900;
+      box-shadow: inset 1px 1px rgba(255,255,255,.16), inset -1px -1px rgba(0,0,0,.28);
+    }
+    .cell:hover:not(.revealed):not(.disabled) { background: #405b99; }
+    .cell.revealed { border-color: #28395f; background: #172546; box-shadow: none; cursor: default; }
+    .cell.flagged { background: linear-gradient(145deg, #3b4f8a, #293d70); }
+    .cell.mine { background: #8a3556; }
+    .cell.exploded { background: #ff587a; }
+    .cell.wrong { color: #ff88a0; }
+    .n1 { color: #82b8ff; } .n2 { color: #71e3ae; } .n3 { color: #ff8d9d; } .n4 { color: #c498ff; }
+    .n5 { color: #ffa366; } .n6 { color: #67e5e0; } .n7 { color: #f1f5ff; } .n8 { color: #a5b4cf; }
+    .hint { margin: 1px 0 0; text-align: center; color: #a8b8d6; line-height: 1.7; font-size: .87rem; }
+    .hint strong { color: #85c6ff; }
+    @media (min-width: 720px) { .modebar { display: none; } #board { width: min(94vw, calc(var(--cols) * 31px)); } .cell { font-size: 1rem; } }
+    @media (max-width: 420px) { body { padding: 18px 9px 28px; } .top { align-items: flex-start; } .difficulty { gap: 5px; } .difficulty button { padding: 8px 10px; } .panel { gap: 3px; } .stat { min-width: 82px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <a class="back" href="index.html">← 返回游戏合集</a>
+    <header class="top">
+      <div><h1>💣 扫雷</h1><p class="subtitle">观察数字，找到所有安全格。</p></div>
+      <nav class="difficulty" aria-label="选择难度">
+        <button class="level active" type="button" data-level="beginner">初级</button>
+        <button class="level" type="button" data-level="intermediate">中级</button>
+        <button class="level" type="button" data-level="expert">高级</button>
+      </nav>
+    </header>
+    <section class="panel" aria-label="游戏信息">
+      <div class="stat">剩余旗帜<strong id="flagsLeft">010</strong></div>
+      <button id="face" type="button" aria-label="重新开始">🙂</button>
+      <div class="stat">用时<strong id="timer">000</strong></div>
+    </section>
+    <div class="modebar" aria-label="触屏操作模式">
+      <button id="revealMode" class="active" type="button">翻开模式</button>
+      <button id="flagMode" type="button">🚩 插旗模式</button>
+    </div>
+    <div class="board-wrap"><section id="board" aria-label="扫雷棋盘" aria-live="polite"></section></div>
+    <p class="hint" id="hint"><strong>左键</strong>翻开，<strong>右键</strong>插旗。第一次翻开一定安全。</p>
+  </main>
+  <script>
+    (() => {
+      const LEVELS = {
+        beginner: { name: '初级', rows: 9, cols: 9, mines: 10 },
+        intermediate: { name: '中级', rows: 16, cols: 16, mines: 40 },
+        expert: { name: '高级', rows: 16, cols: 30, mines: 99 }
+      };
+      const boardEl = document.querySelector('#board'), flagsEl = document.querySelector('#flagsLeft');
+      const timerEl = document.querySelector('#timer'), faceEl = document.querySelector('#face'), hintEl = document.querySelector('#hint');
+      const revealModeEl = document.querySelector('#revealMode'), flagModeEl = document.querySelector('#flagMode');
+      let setting, currentLevel, cells, placed, status, flags, seconds, timerId, mode;
+
+      function newGame(levelName) {
+        currentLevel = levelName; setting = LEVELS[levelName];
+        cells = Array.from({ length: setting.rows }, (_, row) => Array.from({ length: setting.cols }, (_, col) => ({
+          row: row, col: col, mine: false, count: 0, revealed: false, flagged: false, exploded: false
+        })));
+        placed = false; status = 'ready'; flags = 0; seconds = 0; mode = 'reveal';
+        clearInterval(timerId); timerId = null;
+        faceEl.textContent = '🙂'; timerEl.textContent = '000';
+        hintEl.innerHTML = '<strong>左键</strong>翻开，<strong>右键</strong>插旗。第一次翻开一定安全。';
+        document.querySelectorAll('.level').forEach(button => button.classList.toggle('active', button.dataset.level === levelName));
+        setMode('reveal'); render();
+      }
+      function neighbors(row, col) {
+        const result = [];
+        for (let y = row - 1; y <= row + 1; y++) for (let x = col - 1; x <= col + 1; x++) {
+          if (y >= 0 && y < setting.rows && x >= 0 && x < setting.cols && !(y === row && x === col)) result.push(cells[y][x]);
+        }
+        return result;
+      }
+      function placeMines(safeRow, safeCol) {
+        const safe = new Set([safeRow + ',' + safeCol]);
+        neighbors(safeRow, safeCol).forEach(cell => safe.add(cell.row + ',' + cell.col));
+        const available = cells.flat().filter(cell => !safe.has(cell.row + ',' + cell.col));
+        for (let i = available.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const old = available[i]; available[i] = available[j]; available[j] = old;
+        }
+        available.slice(0, setting.mines).forEach(cell => { cell.mine = true; });
+        cells.flat().forEach(cell => { if (!cell.mine) cell.count = neighbors(cell.row, cell.col).filter(other => other.mine).length; });
+        placed = true; status = 'playing';
+        timerId = setInterval(() => { seconds = Math.min(999, seconds + 1); timerEl.textContent = String(seconds).padStart(3, '0'); }, 1000);
+      }
+      function reveal(row, col) {
+        if (status === 'won' || status === 'lost') return;
+        const cell = cells[row][col];
+        if (cell.flagged || cell.revealed) return;
+        if (!placed) placeMines(row, col);
+        if (cell.mine) { cell.revealed = true; cell.exploded = true; endGame(false); return; }
+        revealArea(cell); checkWin(); render();
+      }
+      function revealArea(first) {
+        const pending = [first];
+        while (pending.length) {
+          const cell = pending.pop();
+          if (cell.revealed || cell.flagged || cell.mine) continue;
+          cell.revealed = true;
+          if (cell.count === 0) neighbors(cell.row, cell.col).forEach(next => {
+            if (!next.revealed && !next.flagged && !next.mine) pending.push(next);
+          });
+        }
+      }
+      function toggleFlag(row, col) {
+        if (status === 'won' || status === 'lost') return;
+        const cell = cells[row][col];
+        if (cell.revealed || (!cell.flagged && flags >= setting.mines)) return;
+        cell.flagged = !cell.flagged; flags += cell.flagged ? 1 : -1; render();
+      }
+      function checkWin() {
+        if (!placed || cells.flat().some(cell => !cell.mine && !cell.revealed)) return;
+        cells.flat().forEach(cell => { if (cell.mine && !cell.flagged) { cell.flagged = true; flags++; } });
+        endGame(true);
+      }
+      function endGame(won) {
+        status = won ? 'won' : 'lost'; clearInterval(timerId); timerId = null;
+        if (won) {
+          faceEl.textContent = '😎'; hintEl.innerHTML = '🎉 <strong>恭喜通关！</strong> 你找到了所有安全格。';
+        } else {
+          cells.flat().forEach(cell => { if (cell.mine) cell.revealed = true; });
+          faceEl.textContent = '😵'; hintEl.innerHTML = '💥 <strong>踩到地雷了！</strong> 点击笑脸重新开始。';
+        }
+        render();
+      }
+      function setMode(nextMode) {
+        mode = nextMode; revealModeEl.classList.toggle('active', mode === 'reveal'); flagModeEl.classList.toggle('active', mode === 'flag');
+      }
+      function render() {
+        boardEl.style.setProperty('--cols', setting.cols); boardEl.innerHTML = '';
+        cells.flat().forEach(cell => {
+          const button = document.createElement('button');
+          button.type = 'button'; button.className = 'cell'; button.dataset.row = cell.row; button.dataset.col = cell.col;
+          const ended = status === 'won' || status === 'lost';
+          if (cell.revealed) {
+            button.classList.add('revealed');
+            if (cell.mine) { button.classList.add('mine'); button.textContent = cell.exploded ? '💥' : '💣'; }
+            else if (cell.count) { button.classList.add('n' + cell.count); button.textContent = String(cell.count); }
+          } else if (cell.flagged) {
+            button.classList.add('flagged'); button.textContent = '🚩';
+            if (status === 'lost' && !cell.mine) { button.classList.add('wrong'); button.textContent = '✕'; }
+          }
+          if (ended) button.classList.add('disabled');
+          button.setAttribute('aria-label', cell.revealed ? (cell.mine ? '地雷' : cell.count ? '数字 ' + cell.count : '已翻开的空格') : (cell.flagged ? '已插旗的格子' : '未翻开的格子'));
+          boardEl.appendChild(button);
+        });
+        flagsEl.textContent = String(Math.max(0, setting.mines - flags)).padStart(3, '0');
+      }
+      boardEl.addEventListener('click', event => {
+        const target = event.target.closest('.cell'); if (!target) return;
+        const row = Number(target.dataset.row), col = Number(target.dataset.col);
+        if (mode === 'flag') toggleFlag(row, col); else reveal(row, col);
+      });
+      boardEl.addEventListener('contextmenu', event => {
+        const target = event.target.closest('.cell'); if (!target) return;
+        event.preventDefault(); toggleFlag(Number(target.dataset.row), Number(target.dataset.col));
+      });
+      document.querySelectorAll('.level').forEach(button => button.addEventListener('click', () => newGame(button.dataset.level)));
+      faceEl.addEventListener('click', () => newGame(currentLevel));
+      revealModeEl.addEventListener('click', () => setMode('reveal'));
+      flagModeEl.addEventListener('click', () => setMode('flag'));
+      newGame('beginner');
+    })();
+  </script>
+</body>
+</html>

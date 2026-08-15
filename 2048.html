@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2048 · 霓虹游戏厅</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; padding: 24px 15px 36px; color: #fff8eb;
+      font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at 12% 6%, #5b3540 0, transparent 26rem), linear-gradient(145deg, #161126, #2b1e29 55%, #171326);
+    }
+    .app { width: min(100%, 560px); margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 17px; color: #f5d2a4; text-decoration: none; font-size: .92rem; }
+    .back:hover, .back:focus-visible { color: #ffe39f; outline: none; }
+    header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 13px; margin-bottom: 17px; }
+    h1 { margin: 0; font-size: clamp(2.5rem, 10vw, 4.5rem); line-height: .86; letter-spacing: -.04em; color: #ffe09d; text-shadow: 0 0 26px rgba(255, 190, 104, .35); }
+    .subtitle { margin: 11px 0 0; color: #dec7b8; font-size: .92rem; }
+    .right-head { display: flex; align-items: stretch; gap: 8px; }
+    .score-box {
+      min-width: 83px; padding: 7px 9px 6px; border: 1px solid #795667; border-radius: 10px;
+      background: rgba(74, 47, 63, .87); color: #d9beaf; text-align: center; font-size: .7rem; letter-spacing: .06em;
+    }
+    .score-box strong { display: block; margin-top: 2px; color: #fff5db; font-size: 1.18rem; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+    button {
+      border: 1px solid transparent; border-radius: 10px; padding: 9px 13px; color: #35201d; background: #ffd28a;
+      font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; transition: transform .15s, filter .15s, border-color .15s;
+    }
+    button:hover, button:focus-visible { transform: translateY(-1px); filter: brightness(1.08); border-color: #fff; outline: none; }
+    #restart { background: #ffba7c; }
+    .game-shell { position: relative; }
+    #board {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(7px, 2.1vw, 11px); padding: clamp(8px, 2.4vw, 12px);
+      border: 2px solid #8f6270; border-radius: 18px; background: #3b2a3a; box-shadow: 0 0 36px rgba(239, 150, 90, .24);
+      touch-action: none;
+    }
+    .tile {
+      aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: clamp(7px, 2vw, 11px);
+      background: #574052; color: #3a2430; font-size: clamp(1.15rem, 8vw, 2.65rem); font-weight: 900; line-height: 1;
+      box-shadow: inset 1px 1px rgba(255,255,255,.13), inset -2px -2px rgba(0,0,0,.16); transition: background .14s ease, transform .14s ease;
+    }
+    .tile.has-value { transform: scale(1); }
+    .tile.v-2 { background: #f8e5bc; color: #4b3440; }
+    .tile.v-4 { background: #f3cf91; color: #4b2f32; }
+    .tile.v-8 { background: #f3a66b; color: #fff7ec; }
+    .tile.v-16 { background: #ee805a; color: #fff7ec; }
+    .tile.v-32 { background: #e45f5f; color: #fff7ec; }
+    .tile.v-64 { background: #c94d63; color: #fff7ec; }
+    .tile.v-128 { background: #ad69cb; color: #fff9ff; font-size: clamp(1rem, 6.7vw, 2.15rem); }
+    .tile.v-256 { background: #7f74d9; color: #fff9ff; font-size: clamp(1rem, 6.7vw, 2.15rem); }
+    .tile.v-512 { background: #5185da; color: #fff9ff; font-size: clamp(.95rem, 6.3vw, 2rem); }
+    .tile.v-1024 { background: #46b8b1; color: #fff; font-size: clamp(.79rem, 5.4vw, 1.65rem); }
+    .tile.v-2048 { background: #f2c84f; color: #543c17; font-size: clamp(.79rem, 5.4vw, 1.65rem); box-shadow: 0 0 23px rgba(255, 213, 77, .68); }
+    .tile.v-big { background: #ffe08a; color: #55391b; font-size: clamp(.74rem, 5.1vw, 1.5rem); box-shadow: 0 0 23px rgba(255, 213, 77, .62); }
+    #overlay {
+      position: absolute; inset: 0; display: none; place-items: center; padding: 18px; border-radius: 18px;
+      background: rgba(32, 19, 35, .83); text-align: center; backdrop-filter: blur(3px);
+    }
+    #overlay.show { display: grid; }
+    .modal { width: min(100%, 320px); padding: 25px 20px 21px; border: 1px solid #f5c97d; border-radius: 16px; background: #40293b; box-shadow: 0 0 33px rgba(255, 186, 104, .24); }
+    .modal h2 { margin: 0 0 9px; color: #ffe0a1; font-size: 1.55rem; }
+    .modal p { margin: 0 0 17px; color: #edd7ce; line-height: 1.6; }
+    .modal-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+    .modal-actions .continue { color: #fff7e8; background: #82617c; }
+    #message { min-height: 1.5em; margin: 14px 2px 0; color: #dec9bb; text-align: center; font-size: .9rem; line-height: 1.55; }
+    .how-to { margin: 18px 0 0; color: #cdb9b1; text-align: center; line-height: 1.85; font-size: .86rem; }
+    kbd { padding: 2px 6px; border: 1px solid #806476; border-bottom-width: 2px; border-radius: 5px; background: #452f45; color: #fff5df; font-family: inherit; font-size: .78rem; }
+    @media (max-width: 420px) {
+      body { padding: 18px 11px 28px; }
+      header { align-items: flex-start; }
+      .right-head { width: 100%; }
+      .score-box { flex: 1; }
+      #restart { flex: 1.1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <a class="back" href="index.html">← 返回游戏合集</a>
+    <header>
+      <div><h1>2048</h1><p class="subtitle">合并相同数字，挑战更高分。</p></div>
+      <div class="right-head" aria-label="分数和操作">
+        <div class="score-box">得分<strong id="score">0</strong></div>
+        <div class="score-box">最高<strong id="best">0</strong></div>
+        <button id="restart" type="button">新游戏</button>
+      </div>
+    </header>
+    <section class="game-shell" aria-label="2048 游戏区域">
+      <div id="board" aria-label="2048 棋盘" role="grid"></div>
+      <div id="overlay" aria-live="assertive">
+        <div class="modal">
+          <h2 id="modalTitle"></h2>
+          <p id="modalText"></p>
+          <div class="modal-actions" id="modalActions"></div>
+        </div>
+      </div>
+    </section>
+    <p id="message">使用方向键、WASD 或滑动棋盘移动方块。</p>
+    <p class="how-to"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> 或 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 移动<br>相同数字碰撞时会合并为更大的数字。</p>
+  </main>
+  <script>
+    (() => {
+      const SIZE = 4, STATE_KEY = 'neon_arcade_2048_state';
+      const boardEl = document.querySelector('#board'), scoreEl = document.querySelector('#score'), bestEl = document.querySelector('#best');
+      const overlayEl = document.querySelector('#overlay'), modalTitleEl = document.querySelector('#modalTitle'), modalTextEl = document.querySelector('#modalText');
+      const modalActionsEl = document.querySelector('#modalActions'), messageEl = document.querySelector('#message');
+      let board, score, best, ended, won, showWin, touchStart;
+
+      function emptyBoard() { return Array.from({ length: SIZE }, () => Array(SIZE).fill(0)); }
+      function isValue(value) { return value === 0 || (Number.isInteger(value) && value >= 2 && (value & (value - 1)) === 0); }
+      function isValidState(data) {
+        return data && Array.isArray(data.board) && data.board.length === SIZE && data.board.every(row => Array.isArray(row) && row.length === SIZE && row.every(isValue)) &&
+          Number.isFinite(data.score) && data.score >= 0 && Number.isFinite(data.best) && data.best >= 0 &&
+          typeof data.ended === 'boolean' && typeof data.won === 'boolean' && typeof data.showWin === 'boolean';
+      }
+      function restore() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STATE_KEY));
+          if (!isValidState(saved)) return false;
+          board = saved.board.map(row => row.slice()); score = Math.floor(saved.score); best = Math.max(Math.floor(saved.best), score);
+          ended = saved.ended; won = saved.won; showWin = saved.showWin;
+          return true;
+        } catch (_) { return false; }
+      }
+      function persist() {
+        localStorage.setItem(STATE_KEY, JSON.stringify({ board: board, score: score, best: best, ended: ended, won: won, showWin: showWin }));
+      }
+      function newGame() {
+        board = emptyBoard(); score = 0; ended = false; won = false; showWin = false;
+        spawnTile(); spawnTile(); messageEl.textContent = '新的一局开始了，合成 2048 吧！';
+        persist(); render();
+      }
+      function emptyCells() {
+        const cells = [];
+        board.forEach((row, y) => row.forEach((value, x) => { if (!value) cells.push({ x: x, y: y }); }));
+        return cells;
+      }
+      function spawnTile() {
+        const cells = emptyCells();
+        if (!cells.length) return false;
+        const cell = cells[Math.floor(Math.random() * cells.length)];
+        board[cell.y][cell.x] = Math.random() < .9 ? 2 : 4;
+        return true;
+      }
+      function mergeLine(line) {
+        const values = line.filter(Boolean), output = [], result = { points: 0 };
+        for (let i = 0; i < values.length; i++) {
+          if (values[i] === values[i + 1]) {
+            const merged = values[i] * 2; output.push(merged); result.points += merged; i++;
+          } else output.push(values[i]);
+        }
+        while (output.length < SIZE) output.push(0);
+        result.line = output; return result;
+      }
+      function move(direction) {
+        if (ended || showWin) return;
+        let changed = false, gained = 0;
+        for (let index = 0; index < SIZE; index++) {
+          let source, write;
+          if (direction === 'left' || direction === 'right') {
+            source = board[index].slice(); if (direction === 'right') source.reverse();
+            write = line => { board[index] = direction === 'right' ? line.slice().reverse() : line; };
+          } else {
+            source = board.map(row => row[index]); if (direction === 'down') source.reverse();
+            write = line => {
+              const finalLine = direction === 'down' ? line.slice().reverse() : line;
+              finalLine.forEach((value, row) => { board[row][index] = value; });
+            };
+          }
+          const merged = mergeLine(source);
+          if (merged.line.some((value, i) => value !== source[i])) changed = true;
+          gained += merged.points; write(merged.line);
+        }
+        if (!changed) { messageEl.textContent = '这个方向无法移动，换一个方向试试。'; return; }
+        score += gained; best = Math.max(best, score); spawnTile();
+        const reached2048 = !won && board.some(row => row.includes(2048));
+        if (reached2048) { won = true; showWin = true; messageEl.textContent = '🎉 你合成了 2048！'; }
+        if (!reached2048 && !canMove()) { ended = true; showWin = false; messageEl.textContent = '没有可以移动的方块了。'; }
+        persist(); render();
+      }
+      function canMove() {
+        if (emptyCells().length) return true;
+        for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+          const value = board[y][x];
+          if ((x < SIZE - 1 && value === board[y][x + 1]) || (y < SIZE - 1 && value === board[y + 1][x])) return true;
+        }
+        return false;
+      }
+      function tileClass(value) { return value > 2048 ? 'v-big' : 'v-' + value; }
+      function render() {
+        boardEl.innerHTML = '';
+        board.forEach(row => row.forEach(value => {
+          const tile = document.createElement('div');
+          tile.className = 'tile' + (value ? ' has-value ' + tileClass(value) : '');
+          tile.setAttribute('role', 'gridcell'); tile.setAttribute('aria-label', value ? String(value) : '空格');
+          tile.textContent = value || ''; boardEl.appendChild(tile);
+        }));
+        scoreEl.textContent = score; bestEl.textContent = best;
+        renderOverlay();
+      }
+      function renderOverlay() {
+        overlayEl.classList.remove('show'); modalActionsEl.innerHTML = '';
+        if (!ended && !showWin) return;
+        overlayEl.classList.add('show');
+        if (showWin) {
+          modalTitleEl.textContent = '🎉 达成 2048！';
+          modalTextEl.textContent = '当前得分：' + score + '。还可以继续挑战更高数字。';
+          const continueButton = document.createElement('button');
+          continueButton.type = 'button'; continueButton.className = 'continue'; continueButton.textContent = '继续挑战';
+          continueButton.addEventListener('click', () => {
+            showWin = false;
+            if (!canMove()) { ended = true; messageEl.textContent = '没有可以移动的方块了。'; }
+            else messageEl.textContent = '继续挑战更高数字吧！';
+            persist(); render();
+          });
+          modalActionsEl.appendChild(continueButton);
+        } else {
+          modalTitleEl.textContent = '游戏结束';
+          modalTextEl.textContent = '本次得分：' + score + '　最高分：' + best;
+        }
+        const restartButton = document.createElement('button');
+        restartButton.type = 'button'; restartButton.textContent = '重新开始'; restartButton.addEventListener('click', newGame);
+        modalActionsEl.appendChild(restartButton);
+      }
+      function directionFromKey(key) {
+        return { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down' }[key];
+      }
+      document.addEventListener('keydown', event => {
+        const direction = directionFromKey(event.key.toLowerCase());
+        if (!direction) return;
+        event.preventDefault(); move(direction);
+      });
+      boardEl.addEventListener('touchstart', event => {
+        const touch = event.changedTouches[0]; touchStart = { x: touch.clientX, y: touch.clientY };
+      }, { passive: true });
+      boardEl.addEventListener('touchend', event => {
+        if (!touchStart) return;
+        const touch = event.changedTouches[0], deltaX = touch.clientX - touchStart.x, deltaY = touch.clientY - touchStart.y;
+        touchStart = null;
+        if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 25) return;
+        move(Math.abs(deltaX) > Math.abs(deltaY) ? (deltaX > 0 ? 'right' : 'left') : (deltaY > 0 ? 'down' : 'up'));
+      }, { passive: true });
+      document.querySelector('#restart').addEventListener('click', newGame);
+      if (!restore()) { best = 0; newGame(); }
+      else { if (!ended && !canMove()) { ended = true; persist(); } messageEl.textContent = ended ? '这局已经结束，开始新游戏吧。' : showWin ? '已达成 2048，选择是否继续挑战。' : '已恢复上次未完成的对局。'; render(); }
+    })();
+  </script>
+</body>
+</html>
