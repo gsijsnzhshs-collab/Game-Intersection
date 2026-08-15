@@ -10,10 +10,15 @@
     body {
       min-height: 100vh; margin: 0; padding: 24px 14px 36px; color: #eef5ff;
       font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+      position: relative; isolation: isolate; overflow-x: hidden;
       background: radial-gradient(circle at 12% 5%, #273e86 0, transparent 30rem), linear-gradient(145deg, #080e20, #121536 54%, #17102d);
       user-select: none;
     }
-    .app { width: min(100%, 980px); margin: 0 auto; }
+    body::before {
+      content: ""; position: fixed; z-index: -1; top: -310px; right: -270px; width: 720px; aspect-ratio: 1; pointer-events: none; opacity: .35;
+      border-radius: 50%; background: conic-gradient(from 0deg, rgba(114, 186, 255, .28), transparent 28deg 360deg); filter: blur(1px); animation: mine-radar-turn 12s linear infinite;
+    }
+    .app { position: relative; z-index: 1; width: min(100%, 980px); margin: 0 auto; }
     .back { display: inline-block; margin-bottom: 18px; color: #b7cbe9; text-decoration: none; font-size: .92rem; }
     .back:hover, .back:focus-visible { color: #8bc8ff; outline: none; }
     .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -39,34 +44,44 @@
     .modebar button.active { color: #07101f; background: #6de5bc; }
     .board-wrap { overflow-x: auto; padding: 4px 2px 13px; }
     #board {
-      --cols: 9; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      --cols: 9; position: relative; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
       width: min(94vw, calc(var(--cols) * 29px)); margin: 0 auto;
       border: 3px solid #4664a3; border-radius: 8px; overflow: hidden; background: #172550;
       box-shadow: 0 0 30px rgba(105, 147, 255, .28);
     }
     .cell {
-      aspect-ratio: 1; min-width: 0; display: grid; place-items: center; padding: 0;
+      position: relative; aspect-ratio: 1; min-width: 0; display: grid; place-items: center; padding: 0;
       border: 1px solid #405583; border-radius: 0; color: #edf4ff; background: linear-gradient(145deg, #334a80, #263b6b);
       font-family: ui-monospace, "Cascadia Mono", monospace; font-size: clamp(.62rem, 2.3vw, 1rem); line-height: 1; font-weight: 900;
       box-shadow: inset 1px 1px rgba(255,255,255,.16), inset -1px -1px rgba(0,0,0,.28);
     }
     .cell:hover:not(.revealed):not(.disabled) { background: #405b99; }
     .cell.revealed { border-color: #28395f; background: #172546; box-shadow: none; cursor: default; }
+    .cell.reveal-flash { animation: cell-reveal .42s ease-out; }
+    .cell.reveal-flash::after { content: ""; position: absolute; inset: 24%; border: 1px solid #bce7ff; border-radius: 50%; pointer-events: none; animation: cell-ripple .42s ease-out; }
     .cell.flagged { background: linear-gradient(145deg, #3b4f8a, #293d70); }
     .cell.mine { background: #8a3556; }
     .cell.exploded { background: #ff587a; }
     .cell.wrong { color: #ff88a0; }
+    #board.outcome-win { animation: board-win .65s ease-out; }
+    #board.outcome-hit { animation: board-hit .48s ease-out; }
     .n1 { color: #82b8ff; } .n2 { color: #71e3ae; } .n3 { color: #ff8d9d; } .n4 { color: #c498ff; }
     .n5 { color: #ffa366; } .n6 { color: #67e5e0; } .n7 { color: #f1f5ff; } .n8 { color: #a5b4cf; }
     .hint { margin: 1px 0 0; text-align: center; color: #a8b8d6; line-height: 1.7; font-size: .87rem; }
     .hint strong { color: #85c6ff; }
+    @keyframes mine-radar-turn { to { transform: rotate(360deg); } }
+    @keyframes cell-reveal { 35% { transform: scale(.82); background: #77b7ff; box-shadow: 0 0 18px rgba(126, 196, 255, .72); } }
+    @keyframes cell-ripple { to { transform: scale(4.2); opacity: 0; } }
+    @keyframes board-win { 35% { border-color: #72f0bd; box-shadow: 0 0 52px rgba(91, 241, 190, .56); } }
+    @keyframes board-hit { 25%, 75% { transform: translateX(-5px); border-color: #ff718d; box-shadow: 0 0 43px rgba(255, 86, 120, .56); } 50% { transform: translateX(5px); } }
     @media (min-width: 720px) { .modebar { display: none; } #board { width: min(94vw, calc(var(--cols) * 31px)); } .cell { font-size: 1rem; } }
     @media (max-width: 420px) { body { padding: 18px 9px 28px; } .top { align-items: flex-start; } .difficulty { gap: 5px; } .difficulty button { padding: 8px 10px; } .panel { gap: 3px; } .stat { min-width: 82px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
   <main class="app">
-    <a class="back" href="index.html">← 返回游戏合集</a>
+    <a class="back" href="inter_g.html">← 返回游戏合集</a>
     <header class="top">
       <div><h1>💣 扫雷</h1><p class="subtitle">观察数字，找到所有安全格。</p></div>
       <nav class="difficulty" aria-label="选择难度">
@@ -97,14 +112,14 @@
       const boardEl = document.querySelector('#board'), flagsEl = document.querySelector('#flagsLeft');
       const timerEl = document.querySelector('#timer'), faceEl = document.querySelector('#face'), hintEl = document.querySelector('#hint');
       const revealModeEl = document.querySelector('#revealMode'), flagModeEl = document.querySelector('#flagMode');
-      let setting, currentLevel, cells, placed, status, flags, seconds, timerId, mode;
+      let setting, currentLevel, cells, placed, status, flags, seconds, timerId, mode, lastReveal, outcomeEffect;
 
       function newGame(levelName) {
         currentLevel = levelName; setting = LEVELS[levelName];
         cells = Array.from({ length: setting.rows }, (_, row) => Array.from({ length: setting.cols }, (_, col) => ({
           row: row, col: col, mine: false, count: 0, revealed: false, flagged: false, exploded: false
         })));
-        placed = false; status = 'ready'; flags = 0; seconds = 0; mode = 'reveal';
+        placed = false; status = 'ready'; flags = 0; seconds = 0; mode = 'reveal'; lastReveal = null; outcomeEffect = null;
         clearInterval(timerId); timerId = null;
         faceEl.textContent = '🙂'; timerEl.textContent = '000';
         hintEl.innerHTML = '<strong>左键</strong>翻开，<strong>右键</strong>插旗。第一次翻开一定安全。';
@@ -136,7 +151,8 @@
         const cell = cells[row][col];
         if (cell.flagged || cell.revealed) return;
         if (!placed) placeMines(row, col);
-        if (cell.mine) { cell.revealed = true; cell.exploded = true; endGame(false); return; }
+        if (cell.mine) { lastReveal = cell; outcomeEffect = 'hit'; cell.revealed = true; cell.exploded = true; endGame(false); return; }
+        lastReveal = cell;
         revealArea(cell); checkWin(); render();
       }
       function revealArea(first) {
@@ -164,8 +180,10 @@
       function endGame(won) {
         status = won ? 'won' : 'lost'; clearInterval(timerId); timerId = null;
         if (won) {
+          outcomeEffect = 'win';
           faceEl.textContent = '😎'; hintEl.innerHTML = '🎉 <strong>恭喜通关！</strong> 你找到了所有安全格。';
         } else {
+          outcomeEffect = 'hit';
           cells.flat().forEach(cell => { if (cell.mine) cell.revealed = true; });
           faceEl.textContent = '😵'; hintEl.innerHTML = '💥 <strong>踩到地雷了！</strong> 点击笑脸重新开始。';
         }
@@ -175,6 +193,9 @@
         mode = nextMode; revealModeEl.classList.toggle('active', mode === 'reveal'); flagModeEl.classList.toggle('active', mode === 'flag');
       }
       function render() {
+        const revealedCell = lastReveal, visualEffect = outcomeEffect;
+        boardEl.classList.remove('outcome-win', 'outcome-hit');
+        if (visualEffect) { void boardEl.offsetWidth; boardEl.classList.add('outcome-' + visualEffect); }
         boardEl.style.setProperty('--cols', setting.cols); boardEl.innerHTML = '';
         cells.flat().forEach(cell => {
           const button = document.createElement('button');
@@ -182,6 +203,7 @@
           const ended = status === 'won' || status === 'lost';
           if (cell.revealed) {
             button.classList.add('revealed');
+            if (revealedCell && cell.row === revealedCell.row && cell.col === revealedCell.col) button.classList.add('reveal-flash');
             if (cell.mine) { button.classList.add('mine'); button.textContent = cell.exploded ? '💥' : '💣'; }
             else if (cell.count) { button.classList.add('n' + cell.count); button.textContent = String(cell.count); }
           } else if (cell.flagged) {
@@ -193,6 +215,7 @@
           boardEl.appendChild(button);
         });
         flagsEl.textContent = String(Math.max(0, setting.mines - flags)).padStart(3, '0');
+        lastReveal = null; outcomeEffect = null;
       }
       boardEl.addEventListener('click', event => {
         const target = event.target.closest('.cell'); if (!target) return;

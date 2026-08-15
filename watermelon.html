@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>合成大西瓜 · 霓虹游戏厅</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; padding: 24px 15px 38px; color: #f4fff0;
+      font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at 11% 8%, rgba(91, 235, 121, .23), transparent 27rem), linear-gradient(145deg, #061c20, #123c34 55%, #352433);
+    }
+    .app { width: min(100%, 760px); margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 18px; color: #c9f0c6; text-decoration: none; font-size: .92rem; }
+    .back:hover, .back:focus-visible { color: #a6ffad; outline: none; }
+    header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 13px; margin-bottom: 17px; }
+    h1 { margin: 0; color: #f6ffe7; font-family: "YouYuan", "Microsoft YaHei", system-ui, sans-serif; font-size: clamp(1.9rem, 5.4vw, 2.85rem); font-weight: 900; letter-spacing: .035em; line-height: 1.12; text-shadow: 0 2px 0 #42835a, 0 0 19px rgba(119, 246, 137, .42); transform: rotate(-1deg); }
+    .subtitle { margin: 7px 0 0; color: #c4dec8; font-size: .92rem; }
+    .top-actions { display: flex; gap: 8px; align-items: stretch; }
+    .score-box { min-width: 92px; padding: 7px 10px; border: 1px solid #497e69; border-radius: 10px; background: rgba(22, 69, 57, .8); color: #b9d8c0; text-align: center; font-size: .72rem; }
+    .score-box strong { display: block; margin-top: 2px; color: #f2fff2; font-size: 1.18rem; font-variant-numeric: tabular-nums; }
+    button { border: 1px solid transparent; border-radius: 10px; padding: 9px 13px; color: #123526; background: #a9f19b; font: inherit; font-weight: 900; cursor: pointer; transition: transform .15s, filter .15s, border-color .15s; }
+    button:hover, button:focus-visible { transform: translateY(-1px); filter: brightness(1.08); border-color: #fff; outline: none; }
+    #restart { background: #f3c77c; color: #3b2918; }
+    .layout { display: flex; align-items: flex-start; justify-content: center; gap: 16px; }
+    .field { position: relative; flex: 0 1 480px; overflow: hidden; border: 3px solid #75da8b; border-radius: 18px; background: #0d302e; box-shadow: 0 0 33px rgba(94, 228, 127, .27); }
+    #game { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+    #overlay { position: absolute; inset: 0; display: none; place-items: center; padding: 22px; background: rgba(4, 22, 22, .72); text-align: center; backdrop-filter: blur(3px); }
+    #overlay.show { display: grid; }
+    .modal { width: min(100%, 315px); padding: 26px 20px 22px; border: 1px solid #a9f19b; border-radius: 16px; background: #173b35; box-shadow: 0 0 32px rgba(100, 234, 122, .25); }
+    .modal h2 { margin: 0 0 10px; color: #d9ffd5; font-size: 1.55rem; }
+    .modal p { margin: 0 0 18px; color: #d3e8d2; line-height: 1.65; }
+    .side { width: 175px; display: grid; gap: 10px; }
+    .side-card { padding: 13px; border: 1px solid #426c5d; border-radius: 13px; background: rgba(18, 58, 51, .78); }
+    .side-card h2 { margin: 0 0 10px; color: #c7e8c8; font-size: .75rem; letter-spacing: .12em; }
+    .fruit-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .preview-fruit { min-height: 74px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,.06); text-align: center; }
+    .fruit-icon { display: block; width: 100%; height: 48px; }
+    .preview-fruit small { display: block; margin-top: 5px; color: #c7dccc; font-size: .68rem; }
+    #message { min-height: 3.2em; margin: 0; color: #c6dcc8; font-size: .86rem; line-height: 1.6; }
+    .how-to { margin: 16px 0 0; color: #c1d8c5; text-align: center; font-size: .87rem; line-height: 1.9; }
+    kbd { padding: 2px 6px; border: 1px solid #5c8c76; border-bottom-width: 2px; border-radius: 5px; background: #244c43; color: #ecffee; font-family: inherit; font-size: .78rem; }
+    @media (max-width: 640px) {
+      body { padding: 18px 10px 28px; }
+      header { align-items: flex-start; }
+      .top-actions { width: 100%; } .score-box, #restart { flex: 1; }
+      .layout { flex-direction: column; align-items: stretch; } .field { width: min(100%, 480px); align-self: center; }
+      .side { width: 100%; grid-template-columns: 1fr 1.2fr; } .side-card { min-height: 104px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <a class="back" href="inter_g.html">← 返回游戏合集</a>
+    <header>
+      <div><h1>🍉 合成大西瓜</h1><p class="subtitle">让相同水果相碰，合成更大的惊喜。</p></div>
+      <div class="top-actions" aria-label="游戏信息">
+        <div class="score-box">得分<strong id="score">0</strong></div>
+        <div class="score-box">最高<strong id="best">0</strong></div>
+        <button id="restart" type="button">重新开始</button>
+      </div>
+    </header>
+    <section class="layout" aria-label="合成大西瓜游戏区域">
+      <div class="field">
+        <canvas id="game" width="480" height="620" aria-label="水果合成容器"></canvas>
+        <div id="overlay" role="status"><div class="modal"><h2>容器装满了！</h2><p id="overText"></p><button id="again" type="button">再来一局</button></div></div>
+      </div>
+      <aside class="side" aria-label="水果预览和提示">
+        <section class="side-card"><h2>准备投放 / 下一个</h2><div class="fruit-preview"><div class="preview-fruit"><canvas id="currentFruit" class="fruit-icon" width="82" height="58" role="img" aria-label="当前水果：樱桃"></canvas><small id="currentName">樱桃</small></div><div class="preview-fruit"><canvas id="nextFruit" class="fruit-icon" width="82" height="58" role="img" aria-label="下一个水果：草莓"></canvas><small id="nextName">草莓</small></div></div></section>
+        <section class="side-card"><h2>提示</h2><p id="message">移动指针选择位置，点击投放水果。</p></section>
+      </aside>
+    </section>
+    <p class="how-to">移动鼠标或触摸选择位置，点击投放。<br><kbd>←</kbd> <kbd>→</kbd> 调整位置　<kbd>空格</kbd> 投放</p>
+  </main>
+  <script>
+    (() => {
+      const W = 480, H = 620, WALL = 18, FLOOR = 596, DANGER = 126, SPAWN_Y = 52, GRAVITY = 1250, BEST_KEY = 'neon_arcade_watermelon_best';
+      const FRUITS = [
+        { name: '樱桃', kind: 'cherry', r: 14, a: '#ff9aaa', b: '#e95272', points: 1 },
+        { name: '草莓', kind: 'strawberry', r: 19, a: '#ff9d9d', b: '#dd3f57', points: 3 },
+        { name: '葡萄', kind: 'grape', r: 24, a: '#c996ee', b: '#7046ad', points: 6 },
+        { name: '橘子', kind: 'orange', r: 30, a: '#ffc269', b: '#f2772f', points: 10 },
+        { name: '苹果', kind: 'apple', r: 37, a: '#ff8181', b: '#c9364d', points: 15 },
+        { name: '梨子', kind: 'pear', r: 45, a: '#d8e97c', b: '#8aaa3d', points: 21 },
+        { name: '桃子', kind: 'peach', r: 54, a: '#ffc3aa', b: '#ef7c79', points: 28 },
+        { name: '菠萝', kind: 'pineapple', r: 64, a: '#ffe078', b: '#e59d30', points: 36 },
+        { name: '椰子', kind: 'coconut', r: 75, a: '#dbc59a', b: '#8b614d', points: 45 },
+        { name: '甜瓜', kind: 'melon', r: 87, a: '#9ce998', b: '#48a96c', points: 55 },
+        { name: '大西瓜', kind: 'watermelon', r: 101, a: '#a8f297', b: '#2e9a5c', points: 70 }
+      ];
+      const canvas = document.querySelector('#game'); let ctx = canvas.getContext('2d');
+      const scoreEl = document.querySelector('#score'), bestEl = document.querySelector('#best'), messageEl = document.querySelector('#message');
+      const currentFruitEl = document.querySelector('#currentFruit'), currentNameEl = document.querySelector('#currentName');
+      const nextFruitEl = document.querySelector('#nextFruit'), nextNameEl = document.querySelector('#nextName');
+      const overlayEl = document.querySelector('#overlay'), overTextEl = document.querySelector('#overText');
+      let fruits = [], currentTier, nextTier, dropX, score = 0, best = 0, canDrop = true, lost = false, lastTime = performance.now(), dangerSince = 0, nextId = 1, dropToken = 0;
+
+      function loadBest() { try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch (_) { return 0; } }
+      function saveBest() { try { localStorage.setItem(BEST_KEY, String(best)); } catch (_) {} }
+      function randomTier() { return Math.floor(Math.random() * 5); }
+      function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
+      function makeFruit(tier, x, y, vx, vy) { return { id: nextId++, tier: tier, x: x, y: y, vx: vx || 0, vy: vy || 0, r: FRUITS[tier].r }; }
+      function refreshHud() {
+        if (score > best) { best = score; saveBest(); }
+        scoreEl.textContent = score; bestEl.textContent = best;
+        const current = FRUITS[currentTier], next = FRUITS[nextTier];
+        drawFruitPreview(currentFruitEl, current); currentNameEl.textContent = current.name;
+        drawFruitPreview(nextFruitEl, next); nextNameEl.textContent = next.name;
+      }
+      function newGame() {
+        dropToken++; fruits = []; score = 0; currentTier = randomTier(); nextTier = randomTier(); dropX = W / 2;
+        canDrop = true; lost = false; dangerSince = 0; overlayEl.classList.remove('show');
+        messageEl.textContent = '移动指针选择位置，点击投放水果。'; refreshHud();
+      }
+      function drop() {
+        if (!canDrop || lost) return;
+        const fruit = FRUITS[currentTier];
+        const x = clamp(dropX, WALL + fruit.r, W - WALL - fruit.r);
+        fruits.push(makeFruit(currentTier, x, SPAWN_Y, 0, 0));
+        currentTier = nextTier; nextTier = randomTier(); canDrop = false; refreshHud();
+        const token = ++dropToken;
+        window.setTimeout(() => { if (token === dropToken && !lost) canDrop = true; }, 420);
+      }
+      function solveWorld(fruit) {
+        if (fruit.x - fruit.r < WALL) { fruit.x = WALL + fruit.r; fruit.vx = Math.abs(fruit.vx) * .18; }
+        if (fruit.x + fruit.r > W - WALL) { fruit.x = W - WALL - fruit.r; fruit.vx = -Math.abs(fruit.vx) * .18; }
+        if (fruit.y + fruit.r > FLOOR) {
+          fruit.y = FLOOR - fruit.r; fruit.vy = -Math.abs(fruit.vy) * .20; fruit.vx *= .985;
+          if (Math.abs(fruit.vy) < 24) fruit.vy = 0;
+        }
+      }
+      function resolvePair(a, b, merges, used, permitMerge) {
+        let dx = b.x - a.x, dy = b.y - a.y, distance = Math.hypot(dx, dy);
+        const minDistance = a.r + b.r;
+        if (distance >= minDistance) return;
+        if (distance < .01) { dx = .01; dy = 0; distance = .01; }
+        const nx = dx / distance, ny = dy / distance, overlap = minDistance - distance;
+        const massA = a.r * a.r, massB = b.r * b.r, totalMass = massA + massB;
+        a.x -= nx * overlap * (massB / totalMass); a.y -= ny * overlap * (massB / totalMass);
+        b.x += nx * overlap * (massA / totalMass); b.y += ny * overlap * (massA / totalMass);
+        const relativeVelocity = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (relativeVelocity < 0) {
+          const impulse = -(1.12 * relativeVelocity) / (1 / massA + 1 / massB);
+          a.vx -= impulse * nx / massA; a.vy -= impulse * ny / massA;
+          b.vx += impulse * nx / massB; b.vy += impulse * ny / massB;
+        }
+        if (permitMerge && a.tier === b.tier && a.tier < FRUITS.length - 1 && !used.has(a.id) && !used.has(b.id)) {
+          used.add(a.id); used.add(b.id); merges.push([a, b]);
+        }
+      }
+      function mergePairs(pairs) {
+        if (!pairs.length) return;
+        const removed = new Set();
+        pairs.forEach(pair => {
+          const a = pair[0], b = pair[1];
+          if (removed.has(a.id) || removed.has(b.id) || !fruits.includes(a) || !fruits.includes(b)) return;
+          removed.add(a.id); removed.add(b.id);
+          const tier = a.tier + 1, x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
+          fruits.push(makeFruit(tier, x, y, (a.vx + b.vx) / 2, (a.vy + b.vy) / 2 - 80));
+          score += FRUITS[tier].points;
+          messageEl.textContent = '合成了' + FRUITS[tier].name + '！';
+        });
+        fruits = fruits.filter(fruit => !removed.has(fruit.id));
+        refreshHud();
+      }
+      function checkDanger(now) {
+        const dangerFruit = fruits.some(fruit => fruit.y - fruit.r < DANGER && Math.hypot(fruit.vx, fruit.vy) < 58);
+        if (!dangerFruit) { dangerSince = 0; return; }
+        if (!dangerSince) dangerSince = now;
+        if (now - dangerSince >= 2000) endGame();
+      }
+      function endGame() {
+        if (lost) return;
+        lost = true; canDrop = false; dropToken++; refreshHud();
+        overTextEl.textContent = '本次得分：' + score + '　最高分：' + best;
+        overlayEl.classList.add('show'); messageEl.textContent = '水果在危险线停留太久了。';
+      }
+      function update(dt, now) {
+        if (lost) return;
+        fruits.forEach(fruit => {
+          fruit.vy += GRAVITY * dt; fruit.vx *= .999;
+          fruit.x += fruit.vx * dt; fruit.y += fruit.vy * dt; solveWorld(fruit);
+        });
+        const merges = [], used = new Set();
+        for (let pass = 0; pass < 2; pass++) {
+          for (let i = 0; i < fruits.length; i++) for (let j = i + 1; j < fruits.length; j++) resolvePair(fruits[i], fruits[j], merges, used, pass === 0);
+          fruits.forEach(solveWorld);
+        }
+        mergePairs(merges); checkDanger(now);
+      }
+      function roundedRect(x, y, width, height, radius) {
+        ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.arcTo(x + width, y, x + width, y + height, radius);
+        ctx.arcTo(x + width, y + height, x, y + height, radius); ctx.arcTo(x, y + height, x, y, radius);
+        ctx.arcTo(x, y, x + width, y, radius); ctx.closePath();
+      }
+      function radial(data, inner, outer) {
+        const gradient = ctx.createRadialGradient(-35, -45, 5, 0, 4, 96);
+        gradient.addColorStop(0, inner || data.a); gradient.addColorStop(1, outer || data.b);
+        return gradient;
+      }
+      function fillAndStroke(fill, stroke, width) {
+        ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke || 'rgba(74, 55, 45, .78)'; ctx.lineWidth = width || 5; ctx.stroke();
+      }
+      function leaf(x, y, scale, angle) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.beginPath(); ctx.ellipse(0, 0, 12 * scale, 5.8 * scale, 0, 0, Math.PI * 2);
+        fillAndStroke('#5faf56', '#327642', 3); ctx.beginPath(); ctx.moveTo(-9 * scale, 0); ctx.lineTo(9 * scale, 0); ctx.strokeStyle = 'rgba(224,255,202,.7)'; ctx.lineWidth = 1.7; ctx.stroke(); ctx.restore();
+      }
+      function gloss() {
+        ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.ellipse(-31, -39, 17, 9, -.55, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.13)'; ctx.beginPath(); ctx.arc(-50, -18, 6, 0, Math.PI * 2); ctx.fill();
+      }
+      function seed(x, y, rotation, color) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(rotation || 0); ctx.fillStyle = color || '#ffdb6f'; ctx.beginPath(); ctx.ellipse(0, 0, 3.1, 5.1, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      function drawCherry(data) {
+        ctx.strokeStyle = '#3d8642'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-25, -10); ctx.quadraticCurveTo(-23, -72, 16, -72); ctx.quadraticCurveTo(34, -68, 28, -24); ctx.stroke();
+        leaf(10, -69, .78, -.25);
+        [[-27, 23, 38], [29, 19, 40]].forEach(item => { ctx.beginPath(); ctx.arc(item[0], item[1], item[2], 0, Math.PI * 2); fillAndStroke(radial(data, '#ffb7c1', '#d43f5e'), '#8e2941', 5); });
+        ctx.fillStyle = 'rgba(255,255,255,.32)'; ctx.beginPath(); ctx.ellipse(-41, 5, 11, 7, -.55, 0, Math.PI * 2); ctx.fill();
+      }
+      function drawStrawberry(data) {
+        ctx.beginPath(); ctx.moveTo(0, -54); ctx.bezierCurveTo(-58, -76, -84, -17, -60, 32); ctx.quadraticCurveTo(-32, 77, 0, 84); ctx.quadraticCurveTo(32, 77, 60, 32); ctx.bezierCurveTo(84, -17, 58, -76, 0, -54); ctx.closePath(); fillAndStroke(radial(data, '#ffb9b5', '#d9435d'), '#8f2e43', 5);
+        for (let y = -20; y < 58; y += 22) for (let x = -35 + ((y / 22) % 2) * 8; x <= 35; x += 23) if (Math.abs(x) + Math.abs(y) * .52 < 56) seed(x, y, .25, '#ffe47b');
+        for (let i = 0; i < 5; i++) leaf(Math.cos(i * Math.PI * .4 - Math.PI / 2) * 20, -55 + Math.sin(i * Math.PI * .4 - Math.PI / 2) * 9, .62, i * Math.PI * .4 - Math.PI / 2);
+        gloss();
+      }
+      function drawGrape(data) {
+        const berries = [[0,-36],[-27,-20],[27,-20],[-44,10],[0,8],[44,10],[-24,39],[24,39],[0,65]];
+        berries.forEach((berry, index) => { ctx.beginPath(); ctx.arc(berry[0], berry[1], index === 8 ? 24 : 27, 0, Math.PI * 2); fillAndStroke(radial(data, '#d5aaf2', '#7046ad'), '#51347d', 4); });
+        ctx.strokeStyle = '#3d8642'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-2, -55); ctx.quadraticCurveTo(-18, -80, 10, -87); ctx.quadraticCurveTo(30, -90, 22, -72); ctx.stroke(); leaf(18, -76, .72, .35); ctx.fillStyle = 'rgba(255,255,255,.27)'; ctx.beginPath(); ctx.arc(-9, -49, 7, 0, Math.PI * 2); ctx.fill();
+      }
+      function drawOrange(data) {
+        ctx.beginPath(); ctx.arc(0, 8, 78, 0, Math.PI * 2); fillAndStroke(radial(data, '#ffc45f', '#e67328'), '#a84b29', 5);
+        ctx.beginPath(); ctx.arc(0, 8, 62, 0, Math.PI * 2); fillAndStroke('#ffe9ae', '#ffd17b', 4);
+        ctx.save(); ctx.beginPath(); ctx.arc(0, 8, 58, 0, Math.PI * 2); ctx.clip();
+        for (let i = 0; i < 10; i++) { const angle = -Math.PI / 2 + i * Math.PI * .2; ctx.strokeStyle = 'rgba(238,153,55,.56)'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(Math.cos(angle) * 62, 8 + Math.sin(angle) * 62); ctx.stroke(); }
+        ctx.restore(); ctx.fillStyle = '#ffd670'; ctx.beginPath(); ctx.arc(0, 8, 11, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(214,126,39,.45)'; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.fillStyle = '#75462c'; ctx.beginPath(); ctx.arc(0, -67, 7, 0, Math.PI * 2); ctx.fill(); leaf(17, -72, .93, -.45);
+      }
+      function drawApple(data) {
+        ctx.beginPath(); ctx.moveTo(0, -57); ctx.bezierCurveTo(-21, -86, -75, -73, -78, -11); ctx.bezierCurveTo(-83, 57, -38, 83, 0, 83); ctx.bezierCurveTo(38, 83, 83, 57, 78, -11); ctx.bezierCurveTo(75, -73, 21, -86, 0, -57); ctx.closePath(); fillAndStroke(radial(data, '#ff9d9d', '#c9364d'), '#872d3d', 5);
+        ctx.strokeStyle = '#5b3829'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(0, -60); ctx.quadraticCurveTo(-5, -82, 6, -92); ctx.stroke(); leaf(27, -74, .9, -.32); gloss();
+      }
+      function drawPear(data) {
+        ctx.beginPath(); ctx.moveTo(0, -81); ctx.bezierCurveTo(-26, -64, -32, -35, -23, -11); ctx.bezierCurveTo(-79, 12, -75, 76, -18, 84); ctx.bezierCurveTo(39, 96, 85, 60, 58, 8); ctx.bezierCurveTo(43, -19, 28, -36, 23, -59); ctx.bezierCurveTo(19, -78, 11, -84, 0, -81); ctx.closePath(); fillAndStroke(radial(data, '#ebf39a', '#83aa3d'), '#607d32', 5);
+        ctx.strokeStyle = '#62442c'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(1, -79); ctx.quadraticCurveTo(-3, -96, 8, -101); ctx.stroke(); leaf(27, -89, .75, -.3); gloss();
+      }
+      function drawPeach(data) {
+        ctx.beginPath(); ctx.moveTo(0, -70); ctx.bezierCurveTo(-37, -85, -79, -55, -74, 7); ctx.bezierCurveTo(-68, 70, -23, 88, 0, 82); ctx.bezierCurveTo(23, 88, 68, 70, 74, 7); ctx.bezierCurveTo(79, -55, 37, -85, 0, -70); ctx.closePath(); fillAndStroke(radial(data, '#ffd0b6', '#ed7a78'), '#ad5655', 5);
+        ctx.strokeStyle = 'rgba(191,78,84,.55)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, -60); ctx.bezierCurveTo(-10, -20, -9, 29, 0, 77); ctx.stroke(); ctx.fillStyle = 'rgba(241,89,101,.26)'; ctx.beginPath(); ctx.ellipse(36, 18, 24, 35, -.55, 0, Math.PI * 2); ctx.fill(); leaf(15, -76, .72, -.35); gloss();
+      }
+      function drawPineapple(data) {
+        [[-18,-76,.95,-.7],[0,-82,1.15,0],[19,-75,.95,.7],[-35,-62,.75,-1.05],[35,-62,.75,1.05]].forEach(item => leaf(item[0], item[1], item[2], item[3]));
+        ctx.beginPath(); ctx.moveTo(0, -50); ctx.bezierCurveTo(-66, -44, -73, 25, -39, 70); ctx.quadraticCurveTo(0, 99, 39, 70); ctx.bezierCurveTo(73, 25, 66, -44, 0, -50); ctx.closePath(); fillAndStroke(radial(data, '#ffe78c', '#e3a331'), '#a86d25', 5);
+        ctx.save(); ctx.beginPath(); ctx.moveTo(0, -50); ctx.bezierCurveTo(-66, -44, -73, 25, -39, 70); ctx.quadraticCurveTo(0, 99, 39, 70); ctx.bezierCurveTo(73, 25, 66, -44, 0, -50); ctx.closePath(); ctx.clip();
+        ctx.strokeStyle = 'rgba(157,103,31,.72)'; ctx.lineWidth = 4; for (let offset = -84; offset <= 84; offset += 25) { ctx.beginPath(); ctx.moveTo(offset, -38); ctx.lineTo(offset + 85, 72); ctx.stroke(); ctx.beginPath(); ctx.moveTo(offset, 72); ctx.lineTo(offset + 85, -38); ctx.stroke(); }
+        gloss(); ctx.restore(); ctx.beginPath(); ctx.moveTo(0, -50); ctx.bezierCurveTo(-66, -44, -73, 25, -39, 70); ctx.quadraticCurveTo(0, 99, 39, 70); ctx.bezierCurveTo(73, 25, 66, -44, 0, -50); ctx.closePath(); ctx.strokeStyle = '#a86d25'; ctx.lineWidth = 5; ctx.stroke();
+      }
+      function drawCoconut(data) {
+        ctx.beginPath(); ctx.arc(0, 5, 80, 0, Math.PI * 2); fillAndStroke(radial(data, '#bd936d', '#70493a'), '#583a30', 6);
+        ctx.save(); ctx.beginPath(); ctx.arc(0, 5, 76, 0, Math.PI * 2); ctx.clip(); ctx.strokeStyle = 'rgba(245,216,169,.20)'; ctx.lineWidth = 3;
+        for (let i = -74; i <= 74; i += 19) { ctx.beginPath(); ctx.moveTo(-76, i); ctx.quadraticCurveTo(0, i + 19, 76, i); ctx.stroke(); }
+        ctx.restore(); ctx.beginPath(); ctx.ellipse(0, 6, 61, 64, 0, 0, Math.PI * 2); fillAndStroke(radial(data, '#fff9dd', '#e3d5b6'), '#a9775d', 5);
+        ctx.fillStyle = 'rgba(150,101,73,.16)'; ctx.beginPath(); ctx.ellipse(0, 10, 49, 52, 0, 0, Math.PI * 2); ctx.fill();
+        [[-22,-19,10],[18,-21,10],[-2,14,12]].forEach(eye => { ctx.fillStyle = '#704838'; ctx.beginPath(); ctx.arc(eye[0], eye[1], eye[2], 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(eye[0] - 3, eye[1] - 3, 2.5, 0, Math.PI * 2); ctx.fill(); });
+      }
+      function drawMelon(data) {
+        ctx.beginPath(); ctx.arc(0, 3, 81, 0, Math.PI * 2); fillAndStroke(radial(data, '#91d981', '#397f54'), '#327b52', 5);
+        ctx.save(); ctx.beginPath(); ctx.arc(0, 3, 77, 0, Math.PI * 2); ctx.clip(); ctx.strokeStyle = 'rgba(231,255,190,.46)'; ctx.lineWidth = 3;
+        for (let i = -78; i <= 78; i += 18) { ctx.beginPath(); ctx.moveTo(-80, i); ctx.quadraticCurveTo(0, i - 20, 80, i); ctx.stroke(); ctx.beginPath(); ctx.moveTo(i, -80); ctx.quadraticCurveTo(i + 20, 0, i, 86); ctx.stroke(); }
+        ctx.restore(); ctx.beginPath(); ctx.ellipse(0, 4, 61, 62, 0, 0, Math.PI * 2); fillAndStroke('#e4f3a8', '#bad978', 4);
+        ctx.fillStyle = '#f1c86d'; ctx.beginPath(); ctx.ellipse(0, 6, 20, 43, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#dba552'; ctx.lineWidth = 3; ctx.stroke();
+        [[-7,-19,.2],[7,-9,-.3],[-5,5,.5],[7,18,-.4],[-5,29,.2]].forEach(item => seed(item[0], item[1], item[2], '#9f7140'));
+        leaf(10, -78, .63, -.25);
+      }
+      function drawWatermelon(data) {
+        ctx.beginPath(); ctx.arc(0, 3, 82, 0, Math.PI * 2); fillAndStroke(radial(data, '#a8f297', '#2e9a5c'), '#216d46', 5);
+        ctx.strokeStyle = 'rgba(22,101,59,.7)'; ctx.lineWidth = 13; ctx.lineCap = 'round'; [-52,-26,0,26,52].forEach(x => { ctx.beginPath(); ctx.moveTo(x * .58, -68); ctx.quadraticCurveTo(x, 0, x * .58, 74); ctx.stroke(); });
+        ctx.strokeStyle = '#4c7234'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(0, -78); ctx.quadraticCurveTo(7, -96, 24, -94); ctx.stroke(); leaf(30, -92, .65, -.2); gloss();
+      }
+      function drawFruitArt(data, x, y, radius, alpha) {
+        ctx.save(); ctx.globalAlpha = alpha === undefined ? 1 : alpha; ctx.translate(x, y); ctx.scale(radius / 85, radius / 85); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        const painters = { cherry: drawCherry, strawberry: drawStrawberry, grape: drawGrape, orange: drawOrange, apple: drawApple, pear: drawPear, peach: drawPeach, pineapple: drawPineapple, coconut: drawCoconut, melon: drawMelon, watermelon: drawWatermelon };
+        painters[data.kind](data); ctx.restore();
+      }
+      function drawFruitPreview(element, data) {
+        const previewCtx = element.getContext('2d'); previewCtx.clearRect(0, 0, element.width, element.height);
+        const originalCtx = ctx; ctx = previewCtx; drawFruitArt(data, element.width / 2, element.height * .56, Math.min(element.width, element.height) * .55); ctx = originalCtx;
+        element.setAttribute('aria-label', '水果预览：' + data.name);
+      }
+      function drawFruit(fruit, alpha) { drawFruitArt(FRUITS[fruit.tier], fruit.x, fruit.y, fruit.r, alpha); }
+      function draw() {
+        const background = ctx.createLinearGradient(0, 0, 0, H);
+        background.addColorStop(0, '#123c37'); background.addColorStop(1, '#081f25');
+        ctx.fillStyle = background; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(137, 239, 156, .04)';
+        for (let y = 150; y < FLOOR; y += 35) ctx.fillRect(WALL, y, W - WALL * 2, 1);
+        ctx.save(); ctx.setLineDash([8, 8]); ctx.strokeStyle = dangerSince ? '#ffbd75' : 'rgba(255, 139, 139, .82)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(WALL, DANGER); ctx.lineTo(W - WALL, DANGER); ctx.stroke(); ctx.restore();
+        ctx.fillStyle = 'rgba(255, 218, 172, .9)'; ctx.font = '12px "Microsoft YaHei", sans-serif'; ctx.textAlign = 'left'; ctx.fillText('危险线', WALL + 6, DANGER - 7);
+        ctx.strokeStyle = 'rgba(157, 251, 175, .68)'; ctx.lineWidth = 3; roundedRect(WALL, 20, W - WALL * 2, FLOOR - 20, 20); ctx.stroke();
+        fruits.slice().sort((a, b) => a.y - b.y).forEach(fruit => drawFruit(fruit));
+        if (canDrop && !lost) {
+          const preview = { tier: currentTier, x: clamp(dropX, WALL + FRUITS[currentTier].r, W - WALL - FRUITS[currentTier].r), y: SPAWN_Y, r: FRUITS[currentTier].r };
+          ctx.save(); ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(208, 255, 204, .46)'; ctx.beginPath(); ctx.moveTo(preview.x, SPAWN_Y + preview.r + 8); ctx.lineTo(preview.x, FLOOR); ctx.stroke(); ctx.restore();
+          drawFruit(preview, .62);
+        }
+      }
+      function frame(now) {
+        const dt = Math.min((now - lastTime) / 1000, .032); lastTime = now; update(dt, now); draw(); requestAnimationFrame(frame);
+      }
+      function pointerPosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        return clamp((event.clientX - rect.left) / rect.width * W, WALL, W - WALL);
+      }
+      canvas.addEventListener('pointermove', event => { dropX = pointerPosition(event); });
+      canvas.addEventListener('pointerdown', event => { event.preventDefault(); dropX = pointerPosition(event); drop(); });
+      document.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
+        if (key === 'arrowleft' || key === 'a') { event.preventDefault(); dropX = clamp(dropX - 20, WALL, W - WALL); }
+        else if (key === 'arrowright' || key === 'd') { event.preventDefault(); dropX = clamp(dropX + 20, WALL, W - WALL); }
+        else if (key === ' ') { event.preventDefault(); drop(); }
+      });
+      document.querySelector('#restart').addEventListener('click', newGame);
+      document.querySelector('#again').addEventListener('click', newGame);
+      best = loadBest(); newGame(); requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

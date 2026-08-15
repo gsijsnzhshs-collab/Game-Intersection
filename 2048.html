@@ -9,10 +9,14 @@
     * { box-sizing: border-box; }
     body {
       min-height: 100vh; margin: 0; padding: 24px 15px 36px; color: #fff8eb;
+      position: relative; isolation: isolate; overflow-x: hidden;
       font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
       background: radial-gradient(circle at 12% 6%, #5b3540 0, transparent 26rem), linear-gradient(145deg, #161126, #2b1e29 55%, #171326);
     }
-    .app { width: min(100%, 560px); margin: 0 auto; }
+    .app { position: relative; z-index: 1; width: min(100%, 560px); margin: 0 auto; }
+    .number-drift { position: fixed; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; opacity: .22; }
+    .number-drift span { position: absolute; display: grid; place-items: center; width: 58px; aspect-ratio: 1; border-radius: 13px; color: rgba(255, 247, 227, .85); background: rgba(233, 157, 107, .45); box-shadow: 0 0 20px rgba(255, 177, 101, .35); font-weight: 900; animation: number-drift 12s ease-in-out infinite; }
+    .number-drift .n2 { left: 8%; animation-delay: -3s; } .number-drift .n8 { right: 9%; width: 72px; background: rgba(180, 112, 209, .42); animation-delay: -7s; } .number-drift .n32 { left: 71%; width: 48px; background: rgba(93, 151, 224, .40); animation-delay: -10s; }
     .back { display: inline-block; margin-bottom: 17px; color: #f5d2a4; text-decoration: none; font-size: .92rem; }
     .back:hover, .back:focus-visible { color: #ffe39f; outline: none; }
     header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 13px; margin-bottom: 17px; }
@@ -24,6 +28,7 @@
       background: rgba(74, 47, 63, .87); color: #d9beaf; text-align: center; font-size: .7rem; letter-spacing: .06em;
     }
     .score-box strong { display: block; margin-top: 2px; color: #fff5db; font-size: 1.18rem; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+    #score.score-pop { animation: score-pop .5s ease-out; }
     button {
       border: 1px solid transparent; border-radius: 10px; padding: 9px 13px; color: #35201d; background: #ffd28a;
       font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; transition: transform .15s, filter .15s, border-color .15s;
@@ -36,6 +41,7 @@
       border: 2px solid #8f6270; border-radius: 18px; background: #3b2a3a; box-shadow: 0 0 36px rgba(239, 150, 90, .24);
       touch-action: none;
     }
+    #board.merge-burst { animation: merge-burst .52s ease-out; }
     .tile {
       aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: clamp(7px, 2vw, 11px);
       background: #574052; color: #3a2430; font-size: clamp(1.15rem, 8vw, 2.65rem); font-weight: 900; line-height: 1;
@@ -67,6 +73,9 @@
     #message { min-height: 1.5em; margin: 14px 2px 0; color: #dec9bb; text-align: center; font-size: .9rem; line-height: 1.55; }
     .how-to { margin: 18px 0 0; color: #cdb9b1; text-align: center; line-height: 1.85; font-size: .86rem; }
     kbd { padding: 2px 6px; border: 1px solid #806476; border-bottom-width: 2px; border-radius: 5px; background: #452f45; color: #fff5df; font-family: inherit; font-size: .78rem; }
+    @keyframes number-drift { 0%, 100% { transform: translateY(110vh) rotate(-12deg); opacity: 0; } 14%, 83% { opacity: 1; } 52% { transform: translateY(42vh) rotate(12deg); } }
+    @keyframes merge-burst { 32% { transform: scale(1.018); border-color: #ffe9a8; box-shadow: 0 0 60px rgba(255, 194, 95, .75); } }
+    @keyframes score-pop { 42% { transform: translateY(-5px) scale(1.25); color: #fff1bc; text-shadow: 0 0 14px #ffd577; } }
     @media (max-width: 420px) {
       body { padding: 18px 11px 28px; }
       header { align-items: flex-start; }
@@ -74,11 +83,13 @@
       .score-box { flex: 1; }
       #restart { flex: 1.1; }
     }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
+  <div class="number-drift" aria-hidden="true"><span class="n2">2</span><span class="n8">8</span><span class="n32">32</span></div>
   <main class="app">
-    <a class="back" href="index.html">← 返回游戏合集</a>
+    <a class="back" href="inter_g.html">← 返回游戏合集</a>
     <header>
       <div><h1>2048</h1><p class="subtitle">合并相同数字，挑战更高分。</p></div>
       <div class="right-head" aria-label="分数和操作">
@@ -107,6 +118,12 @@
       const overlayEl = document.querySelector('#overlay'), modalTitleEl = document.querySelector('#modalTitle'), modalTextEl = document.querySelector('#modalText');
       const modalActionsEl = document.querySelector('#modalActions'), messageEl = document.querySelector('#message');
       let board, score, best, ended, won, showWin, touchStart;
+
+      function triggerMergeEffect() {
+        boardEl.classList.remove('merge-burst'); scoreEl.classList.remove('score-pop');
+        void boardEl.offsetWidth;
+        boardEl.classList.add('merge-burst'); scoreEl.classList.add('score-pop');
+      }
 
       function emptyBoard() { return Array.from({ length: SIZE }, () => Array(SIZE).fill(0)); }
       function isValue(value) { return value === 0 || (Number.isInteger(value) && value >= 2 && (value & (value - 1)) === 0); }
@@ -174,7 +191,7 @@
           gained += merged.points; write(merged.line);
         }
         if (!changed) { messageEl.textContent = '这个方向无法移动，换一个方向试试。'; return; }
-        score += gained; best = Math.max(best, score); spawnTile();
+        score += gained; best = Math.max(best, score); if (gained) triggerMergeEffect(); spawnTile();
         const reached2048 = !won && board.some(row => row.includes(2048));
         if (reached2048) { won = true; showWin = true; messageEl.textContent = '🎉 你合成了 2048！'; }
         if (!reached2048 && !canMove()) { ended = true; showWin = false; messageEl.textContent = '没有可以移动的方块了。'; }

@@ -10,9 +10,15 @@
     body {
       min-height: 100vh; margin: 0; padding: 24px 16px; display: flex; flex-direction: column;
       align-items: center; color: #f4fbff; font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+      position: relative; isolation: isolate; overflow-x: hidden;
       background: radial-gradient(circle at top, #164251, #0b1630 55%, #0a0d1e); user-select: none;
     }
-    .shell { width: min(100%, 620px); }
+    body::before {
+      content: ""; position: fixed; z-index: -1; inset: -25%; pointer-events: none; opacity: .22;
+      background-image: linear-gradient(rgba(98, 245, 194, .14) 1px, transparent 1px), linear-gradient(90deg, rgba(98, 245, 194, .14) 1px, transparent 1px);
+      background-size: 42px 42px; transform: perspective(520px) rotateX(57deg) translateY(-4%); transform-origin: center; animation: snake-grid-drift 15s linear infinite;
+    }
+    .shell { position: relative; z-index: 1; width: min(100%, 620px); }
     .back { display: inline-block; margin-bottom: 21px; color: #b9d8e7; text-decoration: none; font-size: .92rem; }
     .back:hover, .back:focus-visible { color: #7fffd4; outline: none; }
     .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
@@ -20,6 +26,7 @@
     .info { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-bottom: 14px; }
     .stat { flex: 1 1 120px; padding: 10px 12px; border: 1px solid #334b67; border-radius: 11px; background: rgba(11, 24, 45, .86); color: #b9c9dc; font-size: .92rem; }
     .stat span { margin-left: 3px; color: #7fffd4; font-weight: 800; font-size: 1.08rem; }
+    .stat.form-stat span { color: #a7eaff; font-size: .91rem; letter-spacing: .04em; white-space: nowrap; }
     button {
       border: 0; border-radius: 10px; padding: 9px 14px; color: #072027; background: #76ebca;
       font: inherit; font-weight: 800; cursor: pointer; transition: transform .15s, filter .15s;
@@ -27,8 +34,12 @@
     button:hover, button:focus-visible { transform: translateY(-1px); filter: brightness(1.08); outline: 2px solid #fff; outline-offset: 2px; }
     canvas {
       display: block; width: 100%; aspect-ratio: 1; border: 3px solid #2dd4bf; border-radius: 13px;
-      background: #0b0f1a; box-shadow: 0 0 27px rgba(45, 212, 191, .27); image-rendering: pixelated;
+      background: #0b0f1a; box-shadow: 0 0 27px rgba(45, 212, 191, .27); image-rendering: pixelated; will-change: transform, box-shadow;
     }
+    canvas.eating { animation: snake-board-pulse .42s ease-out; }
+    canvas.leveling { animation: snake-form-upgrade .72s ease-out; }
+    #score.score-pop { display: inline-block; animation: score-pop .42s ease-out; }
+    #form.form-upgrade { display: inline-block; animation: form-upgrade .72s ease-out; }
     .controls { margin: 16px 0 0; color: #b5c0d0; text-align: center; line-height: 1.9; font-size: .92rem; }
     kbd { padding: 2px 7px; border: 1px solid #526279; border-bottom-width: 2px; border-radius: 5px; background: #202b42; color: #eef7ff; font-family: inherit; font-size: .82rem; }
     #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(3, 8, 19, .70); z-index: 3; }
@@ -36,17 +47,24 @@
     .modal { width: min(100%, 370px); padding: 30px; border: 1px solid #4ce1bf; border-radius: 18px; background: #14213b; text-align: center; box-shadow: 0 0 40px rgba(45, 212, 191, .3); }
     .modal h2 { margin: 0 0 11px; font-size: 1.65rem; }
     .modal p { margin: 0 0 22px; color: #c4d1df; line-height: 1.65; }
+    @keyframes snake-grid-drift { to { background-position: 0 42px, 42px 0; } }
+    @keyframes snake-board-pulse { 45% { transform: scale(1.012); box-shadow: 0 0 45px rgba(82, 255, 202, .56); } }
+    @keyframes snake-form-upgrade { 35% { border-color: #d0adff; box-shadow: 0 0 55px rgba(185, 117, 255, .72); } }
+    @keyframes score-pop { 45% { transform: translateY(-4px) scale(1.28); color: #d9ffef; text-shadow: 0 0 13px #6fffd0; } }
+    @keyframes form-upgrade { 42% { transform: scale(1.09); color: #eadcff; text-shadow: 0 0 14px #b67cff; } }
     @media (max-width: 420px) { body { padding: 18px 11px; } .stat { padding: 8px 10px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
   <main class="shell">
-    <a class="back" href="index.html">← 返回游戏合集</a>
+    <a class="back" href="inter_g.html">← 返回游戏合集</a>
     <div class="title-row"><h1>🐍 贪吃蛇</h1><button id="restart" type="button">重新开始</button></div>
     <div class="info" aria-label="游戏信息">
       <div class="stat">得分 <span id="score">0</span></div>
       <div class="stat">最高分 <span id="best">0</span></div>
       <div class="stat">速度 <span id="speed">1</span>x</div>
+      <div class="stat form-stat">形态 <span id="form">S-0 · 侦察机体</span></div>
     </div>
     <canvas id="board" width="500" height="500" aria-label="贪吃蛇游戏棋盘"></canvas>
     <p class="controls"><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 或 <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 移动　·　<kbd>空格</kbd> 暂停</p>
@@ -58,17 +76,66 @@
     (() => {
       const canvas = document.querySelector('#board');
       const ctx = canvas.getContext('2d');
-      const scoreEl = document.querySelector('#score'), bestEl = document.querySelector('#best'), speedEl = document.querySelector('#speed');
+      const scoreEl = document.querySelector('#score'), bestEl = document.querySelector('#best'), speedEl = document.querySelector('#speed'), formEl = document.querySelector('#form');
       const overlay = document.querySelector('#overlay'), modalTitle = document.querySelector('#modalTitle'), modalText = document.querySelector('#modalText');
       const GRID = 25, COLS = canvas.width / GRID, ROWS = canvas.height / GRID;
       const SPEEDS = [200, 165, 135, 110, 90, 75, 60], BEST_KEY = 'neon_arcade_snake_best';
-      let snake, dir, nextDir, food, score, best, speedLevel, finished, paused, loopId;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const FORMS = [
+        { label: 'S-0 · 侦察机体', shell: '#159a88', shellLight: '#4fe4c4', core: '#baffeb', glow: 'rgba(48, 233, 194, .42)', trim: '#0a514f', plating: 0, antenna: 0, trail: .14 },
+        { label: 'S-1 · 脉冲机体', shell: '#119e93', shellLight: '#5eeed5', core: '#c9fff1', glow: 'rgba(74, 244, 213, .48)', trim: '#0a4f58', plating: 1, antenna: 1, trail: .17 },
+        { label: 'S-2 · 装甲机体', shell: '#137da1', shellLight: '#58d9e8', core: '#cbfbff', glow: 'rgba(82, 222, 246, .52)', trim: '#103c63', plating: 1, antenna: 1, trail: .20 },
+        { label: 'S-3 · 磁轨机体', shell: '#236da9', shellLight: '#76d5ff', core: '#d5f8ff', glow: 'rgba(95, 185, 255, .58)', trim: '#182e68', plating: 2, antenna: 2, trail: .23 },
+        { label: 'S-4 · 量子机体', shell: '#4a5fb5', shellLight: '#9cbdff', core: '#e0edff', glow: 'rgba(137, 139, 255, .62)', trim: '#30275f', plating: 2, antenna: 2, trail: .26 },
+        { label: 'S-5 · 星核机体', shell: '#7654bd', shellLight: '#cf9dff', core: '#f1dcff', glow: 'rgba(201, 114, 255, .68)', trim: '#49236f', plating: 3, antenna: 3, trail: .29 },
+        { label: 'S-6 · 超频机体', shell: '#a04cb8', shellLight: '#f59eff', core: '#fff0ff', glow: 'rgba(255, 105, 235, .74)', trim: '#641d69', plating: 3, antenna: 3, trail: .32 }
+      ];
+      let snake, dir, nextDir, food, score, best, speedLevel, finished, paused, loopId, effectFrame, eatBurst, upgradeBurst;
       best = Number(localStorage.getItem(BEST_KEY)) || 0; bestEl.textContent = best;
+
+      function currentForm() { return FORMS[speedLevel]; }
+      function center(part) { return { x: part.x * GRID + GRID / 2, y: part.y * GRID + GRID / 2 }; }
+      function directionAngle(vector) { return Math.atan2(vector.y, vector.x); }
+      function updateForm(upgraded = false) {
+        formEl.textContent = currentForm().label;
+        if (!upgraded) return;
+        formEl.classList.remove('form-upgrade'); void formEl.offsetWidth; formEl.classList.add('form-upgrade');
+      }
+      function clearEffects() {
+        eatBurst = null; upgradeBurst = null;
+        if (effectFrame) { cancelAnimationFrame(effectFrame); effectFrame = null; }
+      }
+      function hasActiveEffects(now) {
+        return [eatBurst, upgradeBurst].some(effect => effect && now - effect.startedAt < effect.duration);
+      }
+      function requestEffectFrame() {
+        if (!reducedMotion.matches && !effectFrame) effectFrame = requestAnimationFrame(animateEffects);
+      }
+      function animateEffects(now) {
+        effectFrame = null; draw(now);
+        if (hasActiveEffects(now)) effectFrame = requestAnimationFrame(animateEffects);
+      }
+      function emitBurst(kind, part) {
+        if (reducedMotion.matches) return;
+        const effect = { kind, ...center(part), startedAt: performance.now(), duration: kind === 'upgrade' ? 680 : 420 };
+        if (kind === 'upgrade') upgradeBurst = effect; else eatBurst = effect;
+        requestEffectFrame();
+      }
+      function triggerEatEffect(part) {
+        canvas.classList.remove('eating'); scoreEl.classList.remove('score-pop');
+        void canvas.offsetWidth;
+        canvas.classList.add('eating'); scoreEl.classList.add('score-pop');
+        emitBurst('eat', part);
+      }
+      function triggerUpgradeEffect(part) {
+        canvas.classList.remove('leveling'); void canvas.offsetWidth; canvas.classList.add('leveling');
+        updateForm(true); emitBurst('upgrade', part);
+      }
 
       function resetGame() {
         snake = [{ x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }];
         dir = { x: 1, y: 0 }; nextDir = { x: 1, y: 0 }; score = 0; speedLevel = 0; finished = false; paused = false;
-        scoreEl.textContent = '0'; speedEl.textContent = '1'; overlay.classList.remove('show'); placeFood();
+        clearEffects(); scoreEl.textContent = '0'; speedEl.textContent = '1'; updateForm(); overlay.classList.remove('show'); placeFood();
         clearInterval(loopId); loopId = setInterval(tick, SPEEDS[speedLevel]); draw();
       }
       function placeFood() {
@@ -86,15 +153,18 @@
         if (wall || body) { finish(false); return; }
         snake.unshift(head);
         if (head.x === food.x && head.y === food.y) {
-          score += 10; scoreEl.textContent = score;
+          score += 10; scoreEl.textContent = score; triggerEatEffect(head);
           const nextLevel = Math.min(SPEEDS.length - 1, Math.floor(score / 30));
-          if (nextLevel !== speedLevel) { speedLevel = nextLevel; speedEl.textContent = String(speedLevel + 1); clearInterval(loopId); loopId = setInterval(tick, SPEEDS[speedLevel]); }
+          if (nextLevel !== speedLevel) {
+            speedLevel = nextLevel; speedEl.textContent = String(speedLevel + 1); clearInterval(loopId); loopId = setInterval(tick, SPEEDS[speedLevel]);
+            triggerUpgradeEffect(head);
+          }
           placeFood();
         } else snake.pop();
         draw();
       }
       function finish(won) {
-        finished = true; clearInterval(loopId);
+        finished = true; clearInterval(loopId); clearEffects();
         if (score > best) { best = score; bestEl.textContent = best; localStorage.setItem(BEST_KEY, String(best)); }
         modalTitle.textContent = won ? '🎉 恭喜通关！' : '💀 游戏结束';
         modalText.textContent = won ? '棋盘已被填满！得分：' + score : '本次得分：' + score + '　最高分：' + best;
@@ -104,21 +174,72 @@
         ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.arcTo(x + width, y, x + width, y + height, radius); ctx.arcTo(x + width, y + height, x, y + height, radius);
         ctx.arcTo(x, y + height, x, y, radius); ctx.arcTo(x, y, x + width, y, radius); ctx.closePath();
       }
-      function draw() {
+      function drawFood(now) {
+        const pulse = .82 + .18 * Math.sin(now / 180), x = food.x * GRID + GRID / 2, y = food.y * GRID + GRID / 2, radius = GRID * .34 * pulse;
+        ctx.save(); ctx.shadowColor = '#ff6b7c'; ctx.shadowBlur = 14; ctx.fillStyle = '#ff6b7c'; ctx.beginPath();
+        for (let i = 0; i < 6; i++) { const angle = -Math.PI / 2 + i * Math.PI / 3, px = x + Math.cos(angle) * radius, py = y + Math.sin(angle) * radius; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+        ctx.closePath(); ctx.fill(); ctx.fillStyle = '#ffe8ed'; ctx.beginPath(); ctx.arc(x - radius * .19, y - radius * .21, radius * .23, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      function drawEnergyTrail(form, now) {
+        if (reducedMotion.matches || snake.length < 2) return;
+        const energy = .72 + .28 * Math.sin(now / 120), tail = center(snake[snake.length - 1]);
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = form.glow; ctx.globalAlpha = form.trail * energy; ctx.lineWidth = GRID * .72; ctx.shadowColor = form.shellLight; ctx.shadowBlur = 19;
+        ctx.beginPath(); ctx.moveTo(tail.x, tail.y); for (let i = snake.length - 2; i >= 0; i--) { const point = center(snake[i]); ctx.lineTo(point.x, point.y); } ctx.stroke();
+        ctx.strokeStyle = form.core; ctx.globalAlpha = Math.min(.38, form.trail + .05); ctx.lineWidth = GRID * .12; ctx.shadowBlur = 9; ctx.stroke(); ctx.restore();
+      }
+      function drawJoint(from, to, form) {
+        const a = center(from), b = center(to);
+        ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = '#071d2c'; ctx.lineWidth = GRID * .5; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.strokeStyle = form.trim; ctx.lineWidth = GRID * .31; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.strokeStyle = form.core; ctx.globalAlpha = .55; ctx.lineWidth = GRID * .075; ctx.shadowColor = form.shellLight; ctx.shadowBlur = 7; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
+      }
+      function drawModule(part, index, form) {
+        const point = center(part), towardHead = { x: snake[index - 1].x - part.x, y: snake[index - 1].y - part.y }, angle = directionAngle(towardHead), size = GRID * .77;
+        ctx.save(); ctx.translate(point.x, point.y); ctx.rotate(angle);
+        const gradient = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2); gradient.addColorStop(0, form.shellLight); gradient.addColorStop(.52, form.shell); gradient.addColorStop(1, form.trim);
+        ctx.fillStyle = gradient; ctx.strokeStyle = '#cffff8'; ctx.lineWidth = 1; rounded(-size / 2, -size / 2, size, size, 5); ctx.fill(); ctx.globalAlpha = .55; ctx.stroke();
+        ctx.globalAlpha = .62; ctx.fillStyle = '#071d2c'; rounded(-size * .29, -size * .27, size * .58, size * .54, 3); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .82; ctx.fillStyle = form.core; rounded(-size * .25, -size * .055, size * .5, size * .11, 2); ctx.fill();
+        if (form.plating > 0) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = .74; ctx.strokeStyle = form.core; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-size * .38, -size * .29); ctx.lineTo(-size * .12, -size * .41); ctx.lineTo(size * .31, -size * .27); ctx.stroke(); }
+        if (form.plating > 1) { ctx.fillStyle = form.shellLight; ctx.globalAlpha = .85; [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(-size * .2, side * size * .25, 1.45, 0, Math.PI * 2); ctx.fill(); }); }
+        if (form.plating > 2) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#f4d6ff'; ctx.globalAlpha = .62; rounded(size * .16, -size * .29, size * .14, size * .58, 2); ctx.fill(); }
+        ctx.restore();
+      }
+      function drawHead(form, now) {
+        const point = center(snake[0]), angle = directionAngle(dir), size = GRID * .92, eyePulse = .76 + .24 * Math.sin(now / 95);
+        ctx.save(); ctx.translate(point.x, point.y); ctx.rotate(angle); ctx.shadowColor = form.shellLight; ctx.shadowBlur = 10;
+        const gradient = ctx.createLinearGradient(-size / 2, -size / 2, size * .62, size / 2); gradient.addColorStop(0, form.shellLight); gradient.addColorStop(.5, form.shell); gradient.addColorStop(1, form.trim);
+        ctx.fillStyle = gradient; ctx.beginPath(); ctx.moveTo(-size * .48, -size * .37); ctx.lineTo(size * .12, -size * .47); ctx.lineTo(size * .54, -size * .22); ctx.lineTo(size * .61, 0); ctx.lineTo(size * .54, size * .22); ctx.lineTo(size * .12, size * .47); ctx.lineTo(-size * .48, size * .37); ctx.lineTo(-size * .58, 0); ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0; ctx.strokeStyle = '#d9fff7'; ctx.globalAlpha = .6; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#071a2b'; ctx.globalAlpha = .8; rounded(-size * .22, -size * .31, size * .48, size * .62, 4); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = form.core; ctx.globalAlpha = eyePulse; [-1, 1].forEach(side => { rounded(size * .17, side * size * .17 - size * .055, size * .24, size * .11, 3); ctx.fill(); });
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = .92; ctx.strokeStyle = form.core; ctx.lineWidth = 1.35;
+        for (let i = 0; i < form.antenna; i++) { const side = i % 2 ? -1 : 1, offset = i < 2 ? .22 : .34; ctx.beginPath(); ctx.moveTo(-size * .1, side * size * offset); ctx.lineTo(-size * (.28 + i * .035), side * size * (.52 + i * .03)); ctx.lineTo(-size * (.4 + i * .02), side * size * (.43 + i * .025)); ctx.stroke(); }
+        ctx.restore();
+      }
+      function drawTail(form, now) {
+        const tail = snake[snake.length - 1], beforeTail = snake[snake.length - 2] || { x: tail.x - dir.x, y: tail.y - dir.y }, outward = { x: tail.x - beforeTail.x, y: tail.y - beforeTail.y }, point = center(tail), angle = directionAngle(outward), size = GRID * .78;
+        ctx.save(); ctx.translate(point.x, point.y); ctx.rotate(angle); ctx.fillStyle = form.trim; ctx.beginPath(); ctx.moveTo(-size * .35, -size * .3); ctx.lineTo(size * .52, 0); ctx.lineTo(-size * .35, size * .3); ctx.closePath(); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = form.core; ctx.globalAlpha = .75; ctx.beginPath(); ctx.moveTo(size * .08, -size * .12); ctx.lineTo(size * .58, 0); ctx.lineTo(size * .08, size * .12); ctx.closePath(); ctx.fill();
+        if (!reducedMotion.matches) { const flicker = .68 + .32 * Math.sin(now / 80); ctx.fillStyle = form.shellLight; ctx.globalAlpha = .35 * flicker; ctx.beginPath(); ctx.moveTo(size * .36, -size * .14); ctx.lineTo(size * (.78 + form.plating * .04), 0); ctx.lineTo(size * .36, size * .14); ctx.closePath(); ctx.fill(); }
+        ctx.restore();
+      }
+      function drawBurst(effect, now) {
+        if (!effect) return;
+        const progress = Math.min(1, (now - effect.startedAt) / effect.duration); if (progress >= 1) return;
+        const count = effect.kind === 'upgrade' ? 12 : 8, color = effect.kind === 'upgrade' ? '#dca7ff' : '#ff9aa8', reach = GRID * (effect.kind === 'upgrade' ? 2.35 : 1.35) * progress;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.strokeStyle = color; ctx.globalAlpha = (1 - progress) * .75; ctx.lineWidth = effect.kind === 'upgrade' ? 2.1 : 1.6; ctx.shadowColor = color; ctx.shadowBlur = 8;
+        for (let i = 0; i < count; i++) { const angle = -Math.PI / 2 + i * Math.PI * 2 / count + (effect.kind === 'upgrade' ? .12 : 0), start = reach * .32, end = reach + GRID * .16; ctx.beginPath(); ctx.moveTo(effect.x + Math.cos(angle) * start, effect.y + Math.sin(angle) * start); ctx.lineTo(effect.x + Math.cos(angle) * end, effect.y + Math.sin(angle) * end); ctx.stroke(); }
+        ctx.restore();
+      }
+      function draw(now = performance.now()) {
         ctx.fillStyle = '#0b0f1a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = 'rgba(255,255,255,.055)'; ctx.lineWidth = 1;
         for (let i = 1; i < COLS; i++) { ctx.beginPath(); ctx.moveTo(i * GRID, 0); ctx.lineTo(i * GRID, canvas.height); ctx.stroke(); }
         for (let i = 1; i < ROWS; i++) { ctx.beginPath(); ctx.moveTo(0, i * GRID); ctx.lineTo(canvas.width, i * GRID); ctx.stroke(); }
-        const pulse = .82 + .18 * Math.sin(Date.now() / 180);
-        ctx.fillStyle = '#ff6b7c'; ctx.beginPath(); ctx.arc(food.x * GRID + GRID / 2, food.y * GRID + GRID / 2, GRID * .34 * pulse, 0, Math.PI * 2); ctx.fill();
-        for (let i = snake.length - 1; i >= 0; i--) {
-          const part = snake[i], head = i === 0, pad = head ? 1 : 2;
-          const gradient = ctx.createRadialGradient(part.x * GRID + GRID / 2, part.y * GRID + GRID / 2, 1, part.x * GRID + GRID / 2, part.y * GRID + GRID / 2, GRID / 2);
-          gradient.addColorStop(0, head ? '#b9ffe4' : '#49d9c2'); gradient.addColorStop(1, head ? '#16b995' : '#0d8b83');
-          ctx.fillStyle = gradient; rounded(part.x * GRID + pad, part.y * GRID + pad, GRID - pad * 2, GRID - pad * 2, 5); ctx.fill();
-        }
-        const head = snake[0], eyes = dir.x === 1 ? [[17, 8], [17, 17]] : dir.x === -1 ? [[8, 8], [8, 17]] : dir.y === -1 ? [[8, 8], [17, 8]] : [[8, 17], [17, 17]];
-        ctx.fillStyle = '#062d30'; eyes.forEach(eye => { ctx.beginPath(); ctx.arc(head.x * GRID + eye[0], head.y * GRID + eye[1], 2.7, 0, Math.PI * 2); ctx.fill(); });
+        drawFood(now); const form = currentForm(); drawEnergyTrail(form, now);
+        for (let i = snake.length - 1; i > 0; i--) drawJoint(snake[i], snake[i - 1], form);
+        for (let i = snake.length - 1; i > 0; i--) drawModule(snake[i], i, form);
+        drawTail(form, now); drawHead(form, now); drawBurst(eatBurst, now); drawBurst(upgradeBurst, now);
       }
       function setDirection(x, y) { if (!finished && !(x === -dir.x && y === -dir.y)) nextDir = { x: x, y: y }; }
       document.addEventListener('keydown', event => {
@@ -129,6 +250,7 @@
       });
       document.querySelector('#restart').addEventListener('click', resetGame);
       document.querySelector('#restartBtn').addEventListener('click', resetGame);
+      reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) clearEffects(); draw(); });
       resetGame();
     })();
   </script>

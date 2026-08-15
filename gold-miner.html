@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="黄金矿工网页小游戏：摆动矿钩，挖取黄金、宝石和神秘宝袋。">
+  <title>黄金矿工 · 霓虹游戏厅</title>
+  <style>
+    :root { color-scheme: dark; --gold: #ffd35f; --gold-light: #fff0a9; --muted: #d2dded; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; padding: 28px 16px 42px; color: #f9f4df; font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif; background: radial-gradient(circle at 14% 2%, rgba(255, 192, 61, .27), transparent 27rem), radial-gradient(circle at 91% 85%, rgba(160, 74, 35, .32), transparent 31rem), linear-gradient(145deg, #101d37, #4d2c25 54%, #21182c); }
+    .shell { width: min(100%, 900px); margin: 0 auto; }
+    .back { display: inline-flex; align-items: center; gap: 7px; color: #ffe99b; text-decoration: none; font-weight: 800; transition: color .18s ease, transform .18s ease; }
+    .back:hover, .back:focus-visible { color: #fff8d4; transform: translateX(-3px); outline: none; }
+    .title-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin: 19px 0 14px; }
+    h1 { margin: 0; color: #fff4bf; font-family: Impact, "Arial Black", "Microsoft YaHei", sans-serif; font-size: clamp(2rem, 6vw, 3.25rem); font-style: italic; letter-spacing: .035em; text-shadow: 0 3px #9f5d1d, 0 0 18px rgba(255, 205, 80, .42); }
+    button { border: 1px solid rgba(255, 245, 194, .48); border-radius: 11px; padding: 9px 14px; color: #402515; background: linear-gradient(180deg, #ffe99a, #f2af40); box-shadow: inset 0 1px rgba(255,255,255,.55), 0 5px 15px rgba(23, 9, 4, .24); font: inherit; font-weight: 900; cursor: pointer; transition: transform .16s ease, filter .16s ease; }
+    button:hover, button:focus-visible { transform: translateY(-2px); filter: brightness(1.07); outline: 2px solid #fff; outline-offset: 3px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 14px; }
+    .stat { min-width: 0; padding: 11px 13px; border: 1px solid rgba(255, 236, 166, .21); border-radius: 13px; background: rgba(22, 29, 49, .61); box-shadow: inset 0 1px rgba(255,255,255,.05); }
+    .stat span { display: block; overflow: hidden; color: var(--gold-light); font-size: clamp(1rem, 3vw, 1.24rem); font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+    .stat small { display: block; margin-bottom: 2px; color: #c5d1e2; font-size: .72rem; font-weight: 700; letter-spacing: .08em; }
+    .board-wrap { position: relative; overflow: hidden; border: 3px solid #e9ad4e; border-radius: 19px; background: #14233f; box-shadow: 0 0 0 1px rgba(255, 246, 186, .24), 0 22px 50px rgba(5, 7, 16, .43), 0 0 38px rgba(255, 171, 57, .18); }
+    canvas { display: block; width: 100%; aspect-ratio: 8 / 5; cursor: crosshair; touch-action: manipulation; }
+    .hint { margin: 14px 3px 0; color: var(--muted); text-align: center; line-height: 1.8; font-size: .92rem; }
+    kbd { display: inline-block; padding: 1px 6px; border: 1px solid rgba(255,255,255,.27); border-bottom-width: 2px; border-radius: 5px; background: rgba(4, 12, 27, .6); color: #fff9dd; font-family: inherit; font-size: .8rem; }
+    #overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(7, 13, 28, .73); backdrop-filter: blur(3px); }
+    #overlay.show { display: flex; }
+    .modal { width: min(100%, 370px); padding: 27px; border: 1px solid #ffe28b; border-radius: 18px; background: linear-gradient(145deg, #354362, #422d36); text-align: center; box-shadow: 0 0 38px rgba(255, 203, 74, .34); }
+    .modal h2 { margin: 0 0 10px; color: #fff0a8; font-size: 1.65rem; }
+    .modal p { margin: 0 0 20px; color: #e0e8f2; line-height: 1.7; }
+    @media (max-width: 560px) { body { padding: 20px 10px 28px; } .title-row { align-items: flex-start; } .title-row button { padding: 8px 10px; font-size: .86rem; } .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .stat { padding: 8px 10px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <a class="back" href="inter_g.html">← 返回游戏合集</a>
+    <div class="title-row"><h1>⛏️ 黄金矿工</h1><button id="restart" type="button">重新开始</button></div>
+    <section class="stats" aria-label="游戏状态">
+      <div class="stat"><small>关卡</small><span id="level">1</span></div>
+      <div class="stat"><small>本局财富</small><span id="score">$0</span></div>
+      <div class="stat"><small>过关目标</small><span id="goal">$650</span></div>
+      <div class="stat"><small>剩余时间</small><span id="time">60.0s</span></div>
+    </section>
+    <div class="board-wrap">
+      <canvas id="board" width="800" height="500" aria-label="黄金矿工游戏区域" tabindex="0"></canvas>
+      <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal"><h2 id="modalTitle">开始挖矿</h2><p id="modalText">瞄准值钱的矿物，在时间耗尽前达成目标。</p><button id="modalButton" type="button">开始第一关</button></div></div>
+    </div>
+    <p class="hint">矿钩会自动摆动，按 <kbd>空格</kbd> 或点击游戏区域发射。大金块更值钱，但拉回较慢；宝石轻巧又珍贵。</p>
+  </main>
+  <script>
+    (() => {
+      const canvas = document.querySelector('#board');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.querySelector('#score'), goalEl = document.querySelector('#goal'), timeEl = document.querySelector('#time'), levelEl = document.querySelector('#level');
+      const overlay = document.querySelector('#overlay'), modalTitle = document.querySelector('#modalTitle'), modalText = document.querySelector('#modalText'), modalButton = document.querySelector('#modalButton');
+      const W = canvas.width, H = canvas.height, ORIGIN = { x: W / 2, y: 92 };
+      const TYPES = {
+        tinyGold: { value: 90, radius: 14, pull: 190, color: '#ffdc59', edge: '#b96d16' },
+        gold: { value: 220, radius: 25, pull: 128, color: '#ffc940', edge: '#a65c13' },
+        giantGold: { value: 480, radius: 42, pull: 78, color: '#f6b62e', edge: '#8c4811' },
+        rock: { value: 35, radius: 31, pull: 86, color: '#8291a2', edge: '#455269' },
+        diamond: { value: 560, radius: 16, pull: 235, color: '#84f1ff', edge: '#237dba' },
+        bag: { value: 0, radius: 20, pull: 150, color: '#c78448', edge: '#704129' }
+      };
+      let level = 1, score = 0, goal = 650, timeLeft = 60, objects = [], angle = Math.PI / 2, swingDirection = 1, ropeLength = 36, hookState = 'swing', hooked = null, lastTime = 0, running = false, levelBannerUntil = 0;
+
+      function money(value) { return '$' + value.toLocaleString('zh-CN'); }
+      function rand(min, max) { return min + Math.random() * (max - min); }
+      function createObject(type, x, y) { return { type, x, y, ...TYPES[type], collected: false, rotation: rand(-.25, .25) }; }
+      function randomObject(type, minY = 250, maxY = 445) {
+        const radius = TYPES[type].radius;
+        for (let attempts = 0; attempts < 100; attempts++) {
+          const item = createObject(type, rand(radius + 22, W - radius - 22), rand(minY, maxY));
+          if (Math.hypot(item.x - ORIGIN.x, item.y - ORIGIN.y) < 105) continue;
+          if (objects.every(other => Math.hypot(item.x - other.x, item.y - other.y) > item.radius + other.radius + 18)) return item;
+        }
+        return createObject(type, rand(45, W - 45), rand(minY, maxY));
+      }
+      function buildLevel() {
+        objects = [];
+        const types = level === 1 ? ['gold', 'gold', 'tinyGold', 'tinyGold', 'tinyGold', 'rock', 'rock', 'diamond', 'bag'] : level === 2 ? ['giantGold', 'gold', 'gold', 'tinyGold', 'tinyGold', 'rock', 'rock', 'rock', 'diamond', 'bag', 'bag'] : ['giantGold', 'giantGold', 'gold', 'gold', 'tinyGold', 'tinyGold', 'rock', 'rock', 'rock', 'diamond', 'diamond', 'bag', 'bag'];
+        types.forEach((type, index) => objects.push(randomObject(type, 235 + (index % 3) * 20, 454)));
+      }
+      function updateStats() { levelEl.textContent = String(level); scoreEl.textContent = money(score); goalEl.textContent = money(goal); timeEl.textContent = timeLeft.toFixed(1) + 's'; }
+      function hideOverlay() { overlay.classList.remove('show'); }
+      function showOverlay(title, text, buttonText, action) { running = false; overlay.classList.add('show'); modalTitle.textContent = title; modalText.textContent = text; modalButton.textContent = buttonText; modalButton.onclick = action; }
+      function resetLevel(first = false) {
+        if (first) { level = 1; score = 0; } else level += 1;
+        goal = 650 + (level - 1) * 500; timeLeft = Math.max(40, 60 - (level - 1) * 3);
+        angle = Math.PI / 2; swingDirection = 1; ropeLength = 36; hookState = 'swing'; hooked = null; levelBannerUntil = performance.now() + 1250;
+        buildLevel(); running = true; lastTime = performance.now(); updateStats(); hideOverlay();
+      }
+      function startNewGame() { resetLevel(true); }
+      function hookPoint() { return { x: ORIGIN.x + Math.cos(angle) * ropeLength, y: ORIGIN.y + Math.sin(angle) * ropeLength }; }
+      function launchHook() { if (running && hookState === 'swing') hookState = 'out'; }
+      function resolveBag() { const prizes = [100, 180, 260, 380, 500]; return prizes[Math.floor(Math.random() * prizes.length)]; }
+      function collect(item) { item.collected = true; hooked = item; score += item.type === 'bag' ? resolveBag() : item.value; updateStats(); }
+      function finishRound() {
+        if (score >= goal) { const bonus = Math.ceil(timeLeft * 10); score += bonus; updateStats(); showOverlay('⛏️ 关卡完成！', `目标已达成，时间奖励 ${money(bonus)}。准备进入第 ${level + 1} 关！`, '进入下一关', () => resetLevel(false)); }
+        else showOverlay('时间到！', `本局挖到 ${money(score)}，距离目标还差 ${money(goal - score)}。再试一次吧！`, '重新挑战', startNewGame);
+      }
+      function update(delta, now) {
+        if (!running) return;
+        timeLeft = Math.max(0, timeLeft - delta / 1000);
+        if (timeLeft <= 0) { updateStats(); finishRound(); return; }
+        if (hookState === 'swing') {
+          angle += swingDirection * delta * .00124;
+          if (angle > Math.PI - .19) { angle = Math.PI - .19; swingDirection = -1; }
+          if (angle < .19) { angle = .19; swingDirection = 1; }
+        } else if (hookState === 'out') {
+          ropeLength += delta * .59; const point = hookPoint();
+          const hit = objects.find(item => !item.collected && Math.hypot(point.x - item.x, point.y - item.y) < item.radius + 13);
+          if (hit) { collect(hit); hookState = 'back'; }
+          else if (ropeLength >= 490 || point.x < -12 || point.x > W + 12 || point.y > H + 15) hookState = 'back';
+        } else if (hookState === 'back') {
+          ropeLength -= delta * (hooked ? hooked.pull : 320) / 1000;
+          if (ropeLength <= 36) { ropeLength = 36; hooked = null; hookState = 'swing'; }
+        }
+        if (now > levelBannerUntil && score >= goal && hookState === 'swing') finishRound();
+        updateStats();
+      }
+      function line(x1, y1, x2, y2, color, width) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); }
+      function roundRect(x, y, width, height, radius) { ctx.beginPath(); ctx.roundRect(x, y, width, height, radius); }
+      function drawSky() {
+        const gradient = ctx.createLinearGradient(0, 0, 0, H); gradient.addColorStop(0, '#3e7bb3'); gradient.addColorStop(.34, '#75b8d7'); gradient.addColorStop(.35, '#6c4c42'); gradient.addColorStop(1, '#2b2633'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = .22; ctx.fillStyle = '#f3f0cf'; [96, 284, 648].forEach((x, i) => { ctx.beginPath(); ctx.arc(x, 68 + i * 11, 32 + i * 8, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1;
+        ctx.fillStyle = '#60463c'; ctx.beginPath(); ctx.moveTo(0, 171); ctx.lineTo(103, 120); ctx.lineTo(213, 173); ctx.lineTo(335, 106); ctx.lineTo(481, 174); ctx.lineTo(638, 104); ctx.lineTo(W, 166); ctx.lineTo(W, 214); ctx.lineTo(0, 214); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#392d38'; ctx.beginPath(); ctx.moveTo(0, 205); ctx.quadraticCurveTo(130, 181, 262, 213); ctx.quadraticCurveTo(430, 173, W, 209); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = .13; ctx.strokeStyle = '#d1c5a2'; ctx.lineWidth = 1; for (let x = -80; x < W + 80; x += 62) line(x, 218, x + 150, H, ctx.strokeStyle, 1); ctx.globalAlpha = 1;
+      }
+      function drawMiner() {
+        ctx.save(); ctx.translate(ORIGIN.x, ORIGIN.y); ctx.fillStyle = '#17334d'; roundRect(-74, -24, 148, 35, 15); ctx.fill(); ctx.fillStyle = '#e7ab3f'; roundRect(-83, -31, 166, 18, 9); ctx.fill();
+        ctx.fillStyle = '#edbd61'; ctx.beginPath(); ctx.arc(0, -50, 26, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#2a3145'; ctx.fillRect(-30, -71, 60, 13); ctx.fillStyle = '#f5c54b'; ctx.beginPath(); ctx.arc(0, -78, 18, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#273046'; ctx.fillRect(-14, -50, 9, 5); ctx.fillRect(8, -50, 9, 5); ctx.strokeStyle = '#45302e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(1, -42, 12, 0, Math.PI); ctx.stroke(); ctx.fillStyle = '#e6a843'; ctx.fillRect(-23, -9, 18, 28); ctx.fillRect(7, -9, 18, 28); ctx.restore();
+      }
+      function drawItem(item) {
+        if (item.collected && item !== hooked) return;
+        ctx.save(); ctx.translate(item.x, item.y); ctx.rotate(item.rotation);
+        if (['tinyGold', 'gold', 'giantGold'].includes(item.type)) {
+          const g = ctx.createRadialGradient(-item.radius * .3, -item.radius * .35, 2, 0, 0, item.radius * 1.2); g.addColorStop(0, '#fff6aa'); g.addColorStop(.35, item.color); g.addColorStop(1, item.edge); ctx.fillStyle = g; ctx.strokeStyle = '#6e3f15'; ctx.lineWidth = 2;
+          ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 10, r = item.radius * (i % 2 ? .88 : 1.05), x = Math.cos(a) * r, y = Math.sin(a) * r; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.fill(); ctx.stroke();
+        } else if (item.type === 'rock') {
+          ctx.fillStyle = item.color; ctx.strokeStyle = item.edge; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-item.radius, 5); ctx.lineTo(-item.radius * .62, -item.radius * .78); ctx.lineTo(item.radius * .36, -item.radius); ctx.lineTo(item.radius, -item.radius * .2); ctx.lineTo(item.radius * .64, item.radius * .78); ctx.lineTo(-item.radius * .45, item.radius); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,.22)'; line(-item.radius * .5, -item.radius * .35, item.radius * .42, item.radius * .1, ctx.strokeStyle, 2);
+        } else if (item.type === 'diamond') {
+          ctx.shadowColor = '#69f5ff'; ctx.shadowBlur = 14; ctx.fillStyle = item.color; ctx.strokeStyle = item.edge; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -item.radius); ctx.lineTo(item.radius * .75, -item.radius * .22); ctx.lineTo(0, item.radius); ctx.lineTo(-item.radius * .75, -item.radius * .22); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = 'rgba(255,255,255,.56)'; ctx.beginPath(); ctx.moveTo(0, -item.radius + 4); ctx.lineTo(0, item.radius - 5); ctx.lineTo(-item.radius * .56, -item.radius * .2); ctx.closePath(); ctx.fill();
+        } else {
+          ctx.fillStyle = item.color; ctx.strokeStyle = item.edge; ctx.lineWidth = 2; roundRect(-item.radius * .82, -item.radius * .66, item.radius * 1.64, item.radius * 1.45, 5); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#f2cf84'; ctx.fillRect(-item.radius * .58, -item.radius * .58, item.radius * 1.16, item.radius * .18); ctx.fillStyle = '#fff1b1'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('?', 0, 8);
+        }
+        ctx.restore();
+      }
+      function drawHook() {
+        const point = hookPoint(); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 3; line(ORIGIN.x, ORIGIN.y, point.x, point.y, '#4b3020', 5); line(ORIGIN.x, ORIGIN.y, point.x, point.y, '#f3d797', 1.3); ctx.restore();
+        ctx.save(); ctx.translate(point.x, point.y); ctx.rotate(angle + Math.PI / 2); ctx.fillStyle = '#bccfe0'; ctx.strokeStyle = '#23364b'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6, 4); ctx.quadraticCurveTo(-9, 29, 8, 25); ctx.quadraticCurveTo(17, 21, 12, 13); ctx.lineTo(8, 15); ctx.quadraticCurveTo(9, 21, 4, 20); ctx.quadraticCurveTo(-2, 18, -1, 5); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+        if (hooked) { hooked.x = point.x + Math.cos(angle) * 18; hooked.y = point.y + Math.sin(angle) * 18; drawItem(hooked); }
+      }
+      function drawValueLabels() {
+        ctx.save(); ctx.font = '800 13px "Microsoft YaHei", sans-serif'; ctx.textAlign = 'center'; objects.filter(item => !item.collected).forEach(item => { ctx.fillStyle = 'rgba(10, 19, 33, .7)'; roundRect(item.x - 24, item.y + item.radius + 6, 48, 20, 8); ctx.fill(); ctx.fillStyle = item.type === 'rock' ? '#d7e0ed' : '#fff0a7'; ctx.fillText(item.type === 'bag' ? '$?' : money(item.value), item.x, item.y + item.radius + 21); }); ctx.restore();
+      }
+      function draw(now) {
+        drawSky(); objects.filter(item => item !== hooked).forEach(drawItem); drawValueLabels(); drawMiner(); drawHook();
+        if (now < levelBannerUntil) { const alpha = Math.min(1, (levelBannerUntil - now) / 350); ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = '#fff4bd'; ctx.font = '900 28px "Microsoft YaHei", sans-serif'; ctx.textAlign = 'center'; ctx.shadowColor = '#9a551a'; ctx.shadowBlur = 12; ctx.fillText(`第 ${level} 关 · 目标 ${money(goal)}`, W / 2, 163); ctx.restore(); }
+      }
+      function frame(now) { const delta = Math.min(50, now - (lastTime || now)); lastTime = now; update(delta, now); draw(now); requestAnimationFrame(frame); }
+      document.addEventListener('keydown', event => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); launchHook(); } });
+      canvas.addEventListener('pointerdown', event => { event.preventDefault(); canvas.focus(); launchHook(); });
+      document.querySelector('#restart').addEventListener('click', startNewGame);
+      showOverlay('开始挖矿', '瞄准值钱的矿物，在时间耗尽前达成目标。', '开始第一关', startNewGame);
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

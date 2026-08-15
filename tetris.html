@@ -9,10 +9,14 @@
     * { box-sizing: border-box; }
     body {
       min-height: 100vh; margin: 0; padding: 24px 15px 34px; color: #f9f2ff;
+      position: relative; isolation: isolate; overflow-x: hidden;
       font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif; user-select: none;
       background: radial-gradient(circle at 8% 7%, #52246f 0, transparent 28rem), linear-gradient(145deg, #130d28, #1b1238 55%, #0b172e);
     }
-    .app { width: min(100%, 790px); margin: 0 auto; }
+    .app { position: relative; z-index: 1; width: min(100%, 790px); margin: 0 auto; }
+    .tetromino-rain { position: fixed; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; opacity: .26; }
+    .rain-piece { position: absolute; width: 23px; height: 23px; border-radius: 3px; background: currentColor; box-shadow: 25px 0 currentColor, 50px 0 currentColor, 25px 25px currentColor; filter: drop-shadow(0 0 8px currentColor); animation: tetris-rain 14s linear infinite; }
+    .rain-piece.a { color: #8eeaff; left: 12%; animation-delay: -1s; } .rain-piece.b { color: #f0a1ff; left: 81%; animation-delay: -7s; transform: scale(.78); } .rain-piece.c { color: #ffb677; left: 55%; animation-delay: -11s; transform: rotate(90deg) scale(.65); }
     .back { display: inline-block; margin-bottom: 16px; color: #e2c8f4; text-decoration: none; font-size: .92rem; }
     .back:hover, .back:focus-visible { color: #f7a7ff; outline: none; }
     header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -26,8 +30,10 @@
     .game-layout { display: flex; justify-content: center; align-items: flex-start; gap: 18px; }
     .board-frame {
       position: relative; flex: 0 1 600px; overflow: hidden; border: 3px solid #c461df; border-radius: 13px;
-      background: #10142e; box-shadow: 0 0 32px rgba(211, 93, 235, .34);
+      background: #10142e; box-shadow: 0 0 32px rgba(211, 93, 235, .34); will-change: transform, box-shadow;
     }
+    .board-frame.line-clear { animation: line-clear .45s ease-out; }
+    .board-frame.tetris-clear { animation: tetris-clear .72s ease-out; }
     #board { display: block; width: 100%; height: auto; background: #10142e; }
     .side { width: 165px; display: grid; gap: 11px; }
     .side-card { padding: 12px; border: 1px solid #604776; border-radius: 12px; background: rgba(34, 21, 65, .84); }
@@ -54,6 +60,9 @@
     #overlay.show { display: grid; }
     #overlay h2 { margin: 0 0 8px; font-size: 1.55rem; }
     #overlay p { margin: 0; color: #e5d5f2; line-height: 1.6; }
+    @keyframes tetris-rain { from { top: -80px; opacity: 0; } 10%, 88% { opacity: 1; } to { top: 110%; opacity: 0; } }
+    @keyframes line-clear { 45% { transform: scale(1.012); border-color: #fff4ff; box-shadow: 0 0 58px rgba(244, 159, 255, .82); } }
+    @keyframes tetris-clear { 0%, 100% { transform: scale(1); } 22%, 55% { transform: scale(1.018); border-color: #fff7ff; box-shadow: 0 0 72px rgba(239, 172, 255, .98); } 38% { filter: brightness(1.5); } }
     @media (max-width: 560px) {
       body { padding: 18px 11px 27px; }
       header { align-items: flex-start; }
@@ -64,11 +73,13 @@
       .keyboard { display: none; }
       .touch-controls { display: grid; }
     }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
+  <div class="tetromino-rain" aria-hidden="true"><i class="rain-piece a"></i><i class="rain-piece b"></i><i class="rain-piece c"></i></div>
   <main class="app">
-    <a class="back" href="index.html">← 返回游戏合集</a>
+    <a class="back" href="inter_g.html">← 返回游戏合集</a>
     <header>
       <div><h1>🧱 俄罗斯方块</h1><p class="subtitle">消除整行，别让方块堆到顶端。</p></div>
       <button id="restart" type="button">重新开始</button>
@@ -112,12 +123,19 @@
         L: { color: '#ffae70', matrix: [[0,0,1],[1,1,1]] }
       };
       const boardCanvas = document.querySelector('#board'), boardCtx = boardCanvas.getContext('2d');
+      const boardFrame = document.querySelector('.board-frame');
       const nextCanvas = document.querySelector('#next'), nextCtx = nextCanvas.getContext('2d');
       const scoreEl = document.querySelector('#score'), bestEl = document.querySelector('#best'), linesEl = document.querySelector('#lines'), levelEl = document.querySelector('#level');
       const messageEl = document.querySelector('#message'), pauseEl = document.querySelector('#pause'), overlayEl = document.querySelector('#overlay'), overTextEl = document.querySelector('#overText');
       const BEST_KEY = 'neon_arcade_tetris_best';
       let board, current, next, bag, score, best, lines, level, paused, ended, timer;
       best = Number(localStorage.getItem(BEST_KEY)) || 0; bestEl.textContent = best;
+
+      function triggerLineClear(cleared) {
+        boardFrame.classList.remove('line-clear', 'tetris-clear');
+        void boardFrame.offsetWidth;
+        boardFrame.classList.add(cleared === 4 ? 'tetris-clear' : 'line-clear');
+      }
 
       function emptyBoard() { return Array.from({ length: ROWS }, () => Array(COLS).fill(null)); }
       function shuffle(items) {
@@ -182,6 +200,7 @@
           score += values[cleared] * level; lines += cleared;
           const newLevel = Math.floor(lines / 10) + 1;
           if (newLevel !== level) { level = newLevel; restartTimer(); }
+          triggerLineClear(cleared);
           messageEl.textContent = cleared === 4 ? '✨ 四连消！太漂亮了。' : '消除了 ' + cleared + ' 行！';
         }
         current = next; next = getPiece();
